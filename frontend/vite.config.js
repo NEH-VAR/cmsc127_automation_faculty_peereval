@@ -14,4 +14,8 @@ export default defineConfig({
         strictPort: true,
   },
   plugins: [react(), tailwindcss()],
+  server: {
+        host: true, // same as --host
+        strictPort: true,
+  }
 });

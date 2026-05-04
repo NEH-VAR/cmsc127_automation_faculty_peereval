@@ -1,5 +1,6 @@
 import React from 'react';
 import { Home, Bell, FileText, LayoutDashboard, Settings, ChevronDown, X, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import logo from '../../assets/website logo.svg';
 import facultyIcon from '../../assets/faculty-icon.svg';
 
@@ -17,6 +18,13 @@ const Sidebar = ({ isOpen, onClose, currentView, onNavigate, onLogout }) => {
     fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-100 flex flex-col h-screen transition-transform duration-300 ease-in-out lg:translate-x-0 lg:sticky lg:top-0 lg:self-start lg:flex
     ${isOpen ? 'translate-x-0' : '-translate-x-full'}
   `;
+
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    if (onLogout) onLogout();
+    navigate('/');
+  };
 
   return (
     <>
@@ -84,7 +92,7 @@ const Sidebar = ({ isOpen, onClose, currentView, onNavigate, onLogout }) => {
           </button>
           
           <button 
-            onClick={onLogout}
+            onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-2 rounded-xl text-red-600 hover:bg-red-50 transition-colors"
           >
             <LogOut className="w-5 h-5" />

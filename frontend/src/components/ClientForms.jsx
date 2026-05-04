@@ -1,6 +1,4 @@
 import React, { useState } from 'react';
-import Sidebar from './admin/Sidebar';
-import logo from '../assets/website logo.svg';
 import Question from './client/Question';
 import DynamicButton from './client/DynamicButton';
 

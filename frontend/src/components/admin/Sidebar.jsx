@@ -1,17 +1,15 @@
 import React from 'react';
 import { Home, Bell, FileText, LayoutDashboard, Settings, ChevronDown, X, LogOut } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import logo from '../../assets/website logo.svg';
 import facultyIcon from '../../assets/faculty-icon.svg';
 
-const Sidebar = ({ isOpen, onClose, currentView, onNavigate, onLogout }) => {
+const Sidebar = ({ isOpen, onClose, onLogout }) => {
   const navItems = [
-    { icon: Home, label: 'Home', view: 'select-faculty' },
-    { icon: Bell, label: 'Notifications' },
-    { icon: FileText, label: 'Faculty Nominations', view: 'select-evaluators' },
-    { icon: FileText, label: 'Questions', view: 'questions' },
-    { icon: LayoutDashboard, label: 'Dashboard', view: 'progress' },
-    { icon: Settings, label: 'Settings' },
+    { icon: Home, label: 'Home', path: '/dean-dashboard' },
+    { icon: FileText, label: 'Faculty Nominations', path: '/faculty-nominations' },
+    { icon: FileText, label: 'Questions', path: '/questions' },
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
   ];
 
   const sidebarClasses = `
@@ -20,6 +18,7 @@ const Sidebar = ({ isOpen, onClose, currentView, onNavigate, onLogout }) => {
   `;
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
     if (onLogout) onLogout();
@@ -55,15 +54,13 @@ const Sidebar = ({ isOpen, onClose, currentView, onNavigate, onLogout }) => {
         {/* Navigation */}
         <nav className="flex-1 px-4 py-2 space-y-1">
           {navItems.map((item) => {
-            const isActive = item.view === currentView;
+            const isActive = location.pathname === item.path;
             return (
               <button
                 key={item.label}
                 onClick={() => {
-                  if (item.view) {
-                    onNavigate(item.view);
-                    onClose();
-                  }
+                  navigate(item.path);
+                  onClose();
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
                   isActive 

@@ -102,6 +102,13 @@ export class EvaluationCyclesService {
         nominations_submitted: nominationsSubmitted,
         nominations_complete: nominationsSubmitted >= 5,
         missing_nominations: Math.max(0, 5 - nominationsSubmitted),
+        nominations: nominations.map((nomination) => ({
+          nomination_id: nomination.nomination_id,
+          evaluator_id: nomination.evaluator_id,
+          evaluator_name: nomination.evaluator?.full_name,
+          evaluator_email: nomination.evaluator?.email,
+          status: nomination.status,
+        })),
         approved_nominations: approvedWithStatus,
         evaluations_completed_count: completedEvaluationsCount,
       };

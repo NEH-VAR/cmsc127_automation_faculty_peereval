@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { CheckCircle2, Clock, Users } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { CheckCircle2, Clock, Users, X } from 'lucide-react';
 import facultyIcon from '../../assets/faculty-icon.svg';
 import { api } from '../../lib/api';
 import { useToast } from '../../lib/ToastContext';
-import { useNavigate } from 'react-router-dom';
 
 const ProgressBar = ({ progress }) => {
   return (
@@ -20,9 +19,18 @@ const ProgressDashboard = () => {
   const [progressData, setProgressData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [cycleInfo, setCycleInfo] = useState(null);
+  const [sendingReminderId, setSendingReminderId] = useState(null);
+  const [selectedNominations, setSelectedNominations] = useState(null);
+  const [rowErrors, setRowErrors] = useState({});
   const { showToast } = useToast();
 
-  const navigate = useNavigate();
+  const summary = useMemo(() => {
+    const totalFaculty = progressData.length;
+    const fullyCompleted = progressData.filter((faculty) => faculty.nominations_complete && faculty.completed >= faculty.total).length;
+    const inProgress = progressData.filter((faculty) => !faculty.nominations_complete || faculty.completed < faculty.total).length;
+
+    return { totalFaculty, fullyCompleted, inProgress };
+  }, [progressData]);
 
   useEffect(() => {
     const loadProgress = async () => {
@@ -50,6 +58,7 @@ const ProgressDashboard = () => {
           nominations_submitted: m.nominations_submitted,
           nominations_complete: m.nominations_complete,
           missing_nominations: m.missing_nominations,
+          nominations: m.nominations || [],
           approved_nominations: m.approved_nominations || [],
         }));
 
@@ -78,7 +87,7 @@ const ProgressDashboard = () => {
             <CheckCircle2 className="w-6 h-6 text-brand-green" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-brand-black">1</p>
+            <p className="text-2xl font-bold text-brand-black">{summary.fullyCompleted}</p>
             <p className="text-xs font-semibold text-brand-grey uppercase tracking-wider">Fully Completed</p>
           </div>
         </div>
@@ -87,7 +96,7 @@ const ProgressDashboard = () => {
             <Clock className="w-6 h-6 text-blue-500" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-brand-black">2</p>
+            <p className="text-2xl font-bold text-brand-black">{summary.inProgress}</p>
             <p className="text-xs font-semibold text-brand-grey uppercase tracking-wider">In Progress</p>
           </div>
         </div>
@@ -96,11 +105,17 @@ const ProgressDashboard = () => {
             <Users className="w-6 h-6 text-orange-500" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-brand-black">4</p>
+            <p className="text-2xl font-bold text-brand-black">{summary.totalFaculty}</p>
             <p className="text-xs font-semibold text-brand-grey uppercase tracking-wider">Total Faculty</p>
           </div>
         </div>
       </div>
+
+      {loading && (
+        <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50 px-5 py-4 text-sm font-medium text-blue-700">
+          Loading progress dashboard...
+        </div>
+      )}
 
       {/* Progress Table */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -146,9 +161,11 @@ const ProgressDashboard = () => {
                           )}
                         </div>
                       ))}
-                      <div className="mt-2 text-xs text-brand-grey">
-                        Nominations: {faculty.nominations_submitted}/5 {faculty.nominations_complete ? '' : `• ${faculty.missing_nominations} missing`}
-                      </div>
+                      {!faculty.nominations_complete && (
+                        <div className="mt-2 text-xs text-brand-grey">
+                          Nominations: {faculty.nominations_submitted}/5 {faculty.missing_nominations > 0 ? `• ${faculty.missing_nominations} missing` : ''}
+                        </div>
+                      )}
                     </div>
                   </td>
 
@@ -167,8 +184,11 @@ const ProgressDashboard = () => {
                   <td className="px-8 py-6 text-right align-top">
                     <div className="flex items-center justify-end gap-3">
                       <button
-                        className="px-3 py-1 bg-yellow-50 text-yellow-700 rounded-md text-sm font-semibold"
+                        className="px-3 py-1 bg-yellow-50 text-yellow-700 rounded-md text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
+                        disabled={sendingReminderId === faculty.id}
                         onClick={async () => {
+                          setRowErrors((prev) => ({ ...prev, [faculty.id]: null }));
+                          setSendingReminderId(faculty.id);
                           try {
                             await api.evaluationCycles.remindEvaluators(cycleInfo.cycle_id, faculty.id);
                             showToast({ type: 'success', title: 'Reminders sent', message: 'Reminder emails were sent to pending evaluators.' });
@@ -183,24 +203,33 @@ const ProgressDashboard = () => {
                               nominations_submitted: m.nominations_submitted,
                               nominations_complete: m.nominations_complete,
                               missing_nominations: m.missing_nominations,
+                              nominations: m.nominations || [],
                               approved_nominations: m.approved_nominations || [],
                             }));
                             setProgressData(rows);
                           } catch (err) {
+                            setRowErrors((prev) => ({ ...prev, [faculty.id]: err.message || 'Could not send reminders' }));
                             showToast({ type: 'error', title: 'Failed', message: err.message || 'Could not send reminders' });
+                          } finally {
+                            setSendingReminderId((current) => (current === faculty.id ? null : current));
                           }
                         }}
                       >
-                        Send Reminder
+                        {sendingReminderId === faculty.id ? 'Sending...' : 'Send Reminder'}
                       </button>
 
                       <button
                         className="px-3 py-1 bg-gray-50 text-brand-black rounded-md text-sm font-semibold"
-                        onClick={() => navigate(`/admin/nominations?evaluateeId=${faculty.id}&cycleId=${cycleInfo.cycle_id}`)}
+                        onClick={() => setSelectedNominations(faculty)}
                       >
                         View Nominations
                       </button>
                     </div>
+                    {rowErrors[faculty.id] && (
+                      <p className="mt-2 text-xs font-medium text-red-600 text-right max-w-[18rem] ml-auto">
+                        {rowErrors[faculty.id]}
+                      </p>
+                    )}
                     <div className="mt-2">
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
                         percentage === 100 
@@ -219,6 +248,67 @@ const ProgressDashboard = () => {
           </tbody>
         </table>
       </div>
+
+      {selectedNominations && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setSelectedNominations(null)}
+        >
+          <div className="w-full max-w-2xl rounded-3xl bg-white shadow-2xl overflow-hidden" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
+              <div>
+                <h2 className="text-xl font-bold text-brand-black">Nominations for {selectedNominations.name}</h2>
+                <p className="text-sm text-brand-grey">{selectedNominations.nominations_submitted}/5 selected nominators</p>
+              </div>
+              <button
+                className="rounded-full p-2 text-brand-grey hover:bg-gray-100 hover:text-brand-black"
+                onClick={() => setSelectedNominations(null)}
+                aria-label="Close nominations modal"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="max-h-[70vh] overflow-y-auto px-6 py-5">
+              <div className="mb-4 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-brand-grey">
+                Showing the five people this faculty selected to evaluate them.
+              </div>
+
+              {selectedNominations.nominations.length === 0 ? (
+                <p className="text-sm text-brand-grey">No nominations found for this faculty member.</p>
+              ) : (
+                <div className="space-y-3">
+                  {selectedNominations.nominations.map((nomination) => {
+                    const isApproved = nomination.status === 'APPROVED';
+                    const isRejected = nomination.status === 'REJECTED';
+                    const isPending = nomination.status === 'PENDING';
+
+                    return (
+                      <div key={nomination.nomination_id} className="flex items-center justify-between rounded-2xl border border-gray-100 px-4 py-3">
+                        <div>
+                          <p className="font-semibold text-brand-black">{nomination.evaluator_name}</p>
+                          <p className="text-xs text-brand-grey">{nomination.evaluator_email}</p>
+                        </div>
+                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
+                          isApproved
+                            ? 'bg-green-50 text-brand-green'
+                            : isRejected
+                              ? 'bg-red-50 text-red-600'
+                              : 'bg-gray-50 text-brand-grey'
+                        }`}>
+                          {isApproved ? 'Approved' : isRejected ? 'Rejected' : isPending ? 'Pending' : nomination.status}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

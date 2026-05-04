@@ -13,47 +13,48 @@ const StarIcon = ({ filled }) => (
         </svg>
     );
 
-const RatingComponent = () => {
-            const items = [
-                { id: 1, filled: true },
-                { id: 2, filled: false },
-                { id: 3, filled: false },
-                { id: 4, filled: false }
-            ];
+const RatingComponent = ({ value, onChange }) => {
+    const items = [
+        { id: 1 },
+        { id: 2 },
+        { id: 3 },
+        { id: 4 }
+    ];
 
-            return (
-                <div className="flex flex-col w-fit py-4 bg-red">
+    return (
+        <div className="flex flex-col w-fit py-4">
+            <div className="flex px-4 gap-8">
+                {items.map(item => (
                     <div 
-                        className="flex px-4 gap-8" 
+                        key={item.id} 
+                        className="flex justify-center cursor-pointer"
+                        style={{ 
+                            width: '24px',
+                            fontSize: '12px', 
+                            lineHeight: '1.2',
+                            color: '#000000'
+                        }}
+                        onClick={() => onChange(item.id)}
                     >
-                        {items.map(item => (
-                            <div 
-                                key={item.id} 
-                                className="flex justify-center"
-                                style={{ 
-                                    width: '24px',
-                                    fontSize: '12px', 
-                                    lineHeight: '1.2',
-                                    color: '#000000'
-                                }}
-                            >
-                                {item.id}
-                            </div>
-                        ))}
+                        {item.id}
                     </div>
+                ))}
+            </div>
 
-                    {/* Stars Row with specific constraints */}
+            {/* Stars Row */}
+            <div className="flex gap-[32px] mb-3 px-4 mt-1">
+                {items.map(item => (
                     <div 
-                        className="flex gap-[32px] mb-3 px-4 mt-1" 
+                        key={item.id} 
+                        className="w-6 h-6 flex items-center justify-center cursor-pointer"
+                        onClick={() => onChange(item.id)}
                     >
-                        {items.map(item => (
-                            <div key={item.id} className="w-6 h-6 flex items-center justify-center">
-                                <StarIcon filled={item.filled} />
-                            </div>
-                        ))}
+                        <StarIcon filled={value >= item.id} />
                     </div>
-                </div>
-            );
-    };
+                ))}
+            </div>
+        </div>
+    );
+};
 
 export default RatingComponent;

@@ -160,6 +160,21 @@ export const api = {
       return response.json();
     },
 
+    findActive: async () => {
+      const response = await fetch(`${API_BASE_URL}/api/questions/active`, {
+        headers: {
+          ...getAuthHeaders(),
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to load active questions');
+      }
+
+      return response.json();
+    },
+
     findWithSections: async () => {
       const response = await fetch(`${API_BASE_URL}/api/questions/with-sections`, {
         headers: {
@@ -366,6 +381,41 @@ export const api = {
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
         throw new Error(error.message || 'Failed to load question sections');
+      }
+
+      return response.json();
+    },
+  },
+  evaluations: {
+    getById: async (id) => {
+      const response = await fetch(`${API_BASE_URL}/api/evaluations/${id}`, {
+        headers: {
+          ...getAuthHeaders(),
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to load evaluation details');
+      }
+
+      return response.json();
+    },
+  },
+  answers: {
+    submit: async (payload) => {
+      const response = await fetch(`${API_BASE_URL}/api/answers/submit-evaluation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to submit evaluation answers');
       }
 
       return response.json();

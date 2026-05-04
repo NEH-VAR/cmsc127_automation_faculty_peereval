@@ -4,6 +4,8 @@ import { Repository, In } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { EvaluationCycle } from './entities/evaluation-cycle.entity';
 import { EvaluationCycleFaculty } from './entities/evaluation-cycle-faculty.entity';
+import { Nomination, NominationStatus } from '../nominations/entities/nomination.entity';
+import { Evaluation, EvaluationStatus } from '../evaluations/entities/evaluation.entity';
 import { CreateEvaluationCycleDto } from './dto/create-evaluation-cycle.dto';
 import { UpdateEvaluationCycleDto } from './dto/update-evaluation-cycle.dto';
 import { AssignFacultyToCycleDto } from './dto/assign-faculty-to-cycle.dto';
@@ -21,6 +23,10 @@ export class EvaluationCyclesService {
     private readonly cycleRepo: Repository<EvaluationCycle>,
     @InjectRepository(EvaluationCycleFaculty)
     private readonly cycleFacultyRepo: Repository<EvaluationCycleFaculty>,
+    @InjectRepository(Nomination)
+    private readonly nominationRepo: Repository<Nomination>,
+    @InjectRepository(Evaluation)
+    private readonly evaluationRepo: Repository<Evaluation>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly emailService: EmailService,
@@ -47,6 +53,65 @@ export class EvaluationCyclesService {
 
     const cycle = this.cycleRepo.create(createDto);
     return this.cycleRepo.save(cycle);
+  }
+
+  async getProgress(cycleId: number) {
+    const cycle = await this.cycleRepo.findOne({ where: { cycle_id: cycleId } });
+    if (!cycle) throw new NotFoundException(`Evaluation cycle #${cycleId} not found.`);
+
+    // Get assigned faculty
+    const assignments = await this.cycleFacultyRepo.find({ where: { cycle_id: cycleId }, relations: ['user'] });
+
+    // For each assigned faculty, compute nomination counts and evaluation completions
+    const results = await Promise.all(assignments.map(async (assignment) => {
+      const user = assignment.user;
+
+      const nominations = await this.nominationRepo.find({
+        where: { evaluatee_id: user.user_id, cycle_id: cycleId },
+        relations: ['evaluator'],
+      });
+
+      const nominationsSubmitted = nominations.length; // how many nominations submitted by the evaluatee
+
+      const approvedNominations = nominations.filter(n => n.status === NominationStatus.APPROVED);
+
+      // Count completed evaluations for this evaluatee in this cycle
+      const completedEvaluationsCount = await this.evaluationRepo.createQueryBuilder('evaluation')
+        .innerJoin('evaluation.nomination', 'nomination')
+        .where('nomination.evaluatee_id = :evaluateeId', { evaluateeId: user.user_id })
+        .andWhere('nomination.cycle_id = :cycleId', { cycleId })
+        .andWhere('evaluation.status = :completed', { completed: EvaluationStatus.COMPLETED })
+        .getCount();
+
+      // For each approved nomination, determine if its evaluation is completed
+      const approvedWithStatus = await Promise.all(approvedNominations.map(async (n) => {
+        const evaluation = await this.evaluationRepo.findOne({ where: { nomination_id: n.nomination_id } });
+        return {
+          nomination_id: n.nomination_id,
+          evaluator_id: n.evaluator_id,
+          evaluator_name: n.evaluator?.full_name,
+          evaluation_completed: evaluation ? evaluation.status === EvaluationStatus.COMPLETED : false,
+        };
+      }));
+
+      return {
+        user_id: user.user_id,
+        full_name: user.full_name,
+        email: user.email,
+        image_base64: user.image ? user.image.toString('base64') : null,
+        nominations_submitted: nominationsSubmitted,
+        nominations_complete: nominationsSubmitted >= 5,
+        missing_nominations: Math.max(0, 5 - nominationsSubmitted),
+        approved_nominations: approvedWithStatus,
+        evaluations_completed_count: completedEvaluationsCount,
+      };
+    }));
+
+    return {
+      cycle_id: cycleId,
+      cycle_year: cycle.year,
+      members: results,
+    };
   }
 
   async update(cycleId: number, updateDto: UpdateEvaluationCycleDto) {

@@ -323,6 +323,40 @@ export class NominationsService {
     }
   }
 
+  // Resend evaluation emails (reminders) for an evaluatee in a specific cycle
+  async resendEvaluationEmailsForEvaluatee(cycleId: number, evaluateeId: number) {
+    const approved = await this.nomRepo.find({
+      where: { cycle_id: cycleId, evaluatee_id: evaluateeId, status: NominationStatus.APPROVED },
+    });
+
+    if (!approved || approved.length === 0) {
+      return { message: 'No approved nominations found for this evaluatee in the specified cycle.' };
+    }
+
+    const nominationIds = approved.map(n => n.nomination_id);
+
+    // Find evaluations for these nominations that are not yet completed
+    const evaluations = await this.dataSource.getRepository(Evaluation).find({
+      where: { nomination_id: In(nominationIds) },
+      relations: ['nomination'],
+    });
+
+    const pendingNominationIds = evaluations
+      .filter(e => e.status !== EvaluationStatus.COMPLETED)
+      .map(e => e.nomination_id);
+
+    if (pendingNominationIds.length === 0) {
+      return { message: 'All evaluators have already completed their evaluations.' };
+    }
+
+    const result = await this.sendEvaluationEmails(pendingNominationIds);
+    return {
+      message: 'Reminder emails sent',
+      success: result.success,
+      failed: result.failed,
+    };
+  }
+
   private async sendEvaluationEmails(nominationIds: number[]) {
     const sentCount = { success: 0, failed: 0 };
     const failedEvaluators: Array<{ evaluator_id: number; email: string; error: string }> = [];

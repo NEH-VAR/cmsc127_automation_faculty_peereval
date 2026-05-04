@@ -289,6 +289,35 @@ export const api = {
 
       return response.json();
     },
+    getProgress: async (cycleId) => {
+      const response = await fetch(`${API_BASE_URL}/api/evaluation-cycles/${cycleId}/progress`, {
+        headers: {
+          ...getAuthHeaders(),
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to load cycle progress');
+      }
+
+      return response.json();
+    },
+    remindEvaluators: async (cycleId, evaluateeId) => {
+      const response = await fetch(`${API_BASE_URL}/api/evaluation-cycles/${cycleId}/members/${evaluateeId}/remind`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to send reminders');
+      }
+
+      return response.json();
+    },
     startForms: async (cycleId) => {
       const response = await fetch(`${API_BASE_URL}/api/evaluation-cycles/${cycleId}/start-forms`, {
         method: 'POST',

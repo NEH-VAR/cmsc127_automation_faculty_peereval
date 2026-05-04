@@ -21,7 +21,8 @@ const AppRoutes = ({ isAuthenticated, onLoginSuccess, onLogout }) => {
       />
       <Route path="/dean-dashboard" element={<DeanDashboard onLogout={onLogout} />} />
       <Route path="/client-forms" element={<ClientForms />} />
-      <Route path="/client-nominate" element={<ClientNominate name="Cabilatazan" />} />
+      <Route path="/nominate" element={<ClientNominate />} />
+      <Route path="/client-nominate" element={<ClientNominate />} />
       <Route path="/client-assurance" element={<ClientAssurancePage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

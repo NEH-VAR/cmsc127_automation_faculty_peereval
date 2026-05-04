@@ -47,6 +47,18 @@ export const api = {
       return !!localStorage.getItem('token');
     },
   },
+  magicLinks: {
+    validate: async (token) => {
+      const response = await fetch(`${API_BASE_URL}/api/magic-links/validate/${token}`);
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Invalid or expired link');
+      }
+
+      return response.json();
+    },
+  },
 
   users: {
     listAll: async () => {
@@ -194,6 +206,150 @@ export const api = {
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
         throw new Error(error.message || 'Failed to update question');
+      }
+
+      return response.json();
+    },
+  },
+  evaluationCycles: {
+    create: async (payload) => {
+      const response = await fetch(`${API_BASE_URL}/api/evaluation-cycles`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to create evaluation cycle');
+      }
+
+      return response.json();
+    },
+    listAll: async () => {
+      const response = await fetch(`${API_BASE_URL}/api/evaluation-cycles`, {
+        headers: {
+          ...getAuthHeaders(),
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to load evaluation cycles');
+      }
+
+      return response.json();
+    },
+    assignFaculty: async (cycleId, facultyIds) => {
+      const response = await fetch(`${API_BASE_URL}/api/evaluation-cycles/${cycleId}/assign-faculty`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({ faculty_ids: facultyIds }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to assign faculty to cycle');
+      }
+
+      return response.json();
+    },
+    getAssignedFaculty: async (cycleId) => {
+      const response = await fetch(`${API_BASE_URL}/api/evaluation-cycles/${cycleId}/faculty`, {
+        headers: {
+          ...getAuthHeaders(),
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to load assigned faculty');
+      }
+
+      return response.json();
+    },
+    startForms: async (cycleId) => {
+      const response = await fetch(`${API_BASE_URL}/api/evaluation-cycles/${cycleId}/start-forms`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to start forms');
+      }
+
+      return response.json();
+    },
+    finalizeQuestions: async (cycleId) => {
+      const response = await fetch(`${API_BASE_URL}/api/evaluation-cycles/${cycleId}/finalize-questions`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to finalize questions');
+      }
+
+      return response.json();
+    },
+  },
+  nominations: {
+    getPendingApproval: async () => {
+      const response = await fetch(`${API_BASE_URL}/api/nominations/pending-approval`, {
+        headers: {
+          ...getAuthHeaders(),
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to load nominations');
+      }
+
+      return response.json();
+    },
+    review: async (decisions) => {
+      const response = await fetch(`${API_BASE_URL}/api/nominations/review`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify(decisions),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to review nominations');
+      }
+
+      return response.json();
+    },
+    submit: async (payload) => {
+      const response = await fetch(`${API_BASE_URL}/api/nominations/submit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to submit nominations');
       }
 
       return response.json();

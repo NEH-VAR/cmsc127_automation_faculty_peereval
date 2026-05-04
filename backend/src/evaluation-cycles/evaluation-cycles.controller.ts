@@ -40,6 +40,7 @@ export class EvaluationCyclesController {
     return this.cyclesService.assignFaculty(id, dto);
   }
 
+  @Roles(UserRole.ADMIN, UserRole.FACULTY)
   @Get(':id/faculty')
   getAssignedFaculty(@Param('id', ParseIntPipe) id: number) {
     return this.cyclesService.getAssignedFaculty(id);
@@ -48,5 +49,15 @@ export class EvaluationCyclesController {
   @Post(':id/send-nomination-emails')
   sendNominationEmails(@Param('id', ParseIntPipe) id: number) {
     return this.cyclesService.sendNominationEmails(id);
+  }
+
+  @Post(':id/start-forms')
+  startForms(@Param('id', ParseIntPipe) id: number) {
+    return this.cyclesService.startForms(id);
+  }
+
+  @Post(':id/finalize-questions')
+  finalizeQuestions(@Param('id', ParseIntPipe) id: number) {
+    return this.cyclesService.finalizeQuestions(id);
   }
 }

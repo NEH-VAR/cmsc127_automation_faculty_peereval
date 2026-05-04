@@ -64,6 +64,10 @@ export class EvaluationCyclesService {
     }
 
     const updatedCycle = this.cycleRepo.merge(cycle, updateDto);
+
+    if (updateDto.is_active === false) {
+      updatedCycle.questions_locked = false;
+    }
     return this.cycleRepo.save(updatedCycle);
   }
 
@@ -121,19 +125,21 @@ export class EvaluationCyclesService {
       throw new NotFoundException(`Evaluation cycle #${cycleId} not found.`);
     }
 
-    return this.cycleFacultyRepo.find({
+    const assignments = await this.cycleFacultyRepo.find({
       where: { cycle_id: cycleId },
       relations: ['user'],
-      select: {
-        assignment_id: true,
-        user_id: true,
-        user: {
-          user_id: true,
-          full_name: true,
-          email: true,
-        },
-      },
     });
+
+    return assignments.map((assignment) => ({
+      assignment_id: assignment.assignment_id,
+      user_id: assignment.user_id,
+      user: {
+        user_id: assignment.user?.user_id,
+        full_name: assignment.user?.full_name,
+        email: assignment.user?.email,
+        image_base64: assignment.user?.image ? assignment.user.image.toString('base64') : null,
+      },
+    }));
   }
 
   async sendNominationEmails(cycleId: number) {
@@ -214,6 +220,76 @@ export class EvaluationCyclesService {
       sent_count: sentCount.success,
       failed_count: sentCount.failed,
       failed_faculty: failedFaculty.length > 0 ? failedFaculty : undefined,
+    };
+  }
+
+  async startForms(cycleId: number) {
+    const cycle = await this.cycleRepo.findOne({ where: { cycle_id: cycleId } });
+    if (!cycle) {
+      throw new NotFoundException(`Evaluation cycle #${cycleId} not found.`);
+    }
+
+    if (!cycle.is_active) {
+      throw new BadRequestException('Only active cycles can start forms.');
+    }
+
+    if (cycle.forms_started_at) {
+      return {
+        message: 'Forms have already been started for this cycle.',
+        cycle_id: cycleId,
+        forms_started_at: cycle.forms_started_at,
+      };
+    }
+
+    if (cycle.questions_locked) {
+      throw new BadRequestException('Questions are already finalized for this cycle.');
+    }
+
+    cycle.forms_started_at = new Date();
+    await this.cycleRepo.save(cycle);
+
+    return {
+      message: 'Forms started for this cycle.',
+      forms_started_at: cycle.forms_started_at,
+      cycle_id: cycleId,
+    };
+  }
+
+  async finalizeQuestions(cycleId: number) {
+    const cycle = await this.cycleRepo.findOne({ where: { cycle_id: cycleId } });
+    if (!cycle) {
+      throw new NotFoundException(`Evaluation cycle #${cycleId} not found.`);
+    }
+
+    if (!cycle.is_active) {
+      throw new BadRequestException('Only active cycles can finalize questions.');
+    }
+
+    if (cycle.questions_locked) {
+      return {
+        message: 'Questions are already finalized for this cycle.',
+        cycle_id: cycleId,
+        questions_locked: true,
+      };
+    }
+
+    if (!cycle.forms_started_at) {
+      cycle.forms_started_at = new Date();
+    }
+
+    cycle.questions_locked = true;
+    await this.cycleRepo.save(cycle);
+
+    const emailResult = await this.sendNominationEmails(cycleId);
+
+    return {
+      message: 'Questions finalized for this cycle. Nomination emails sent.',
+      cycle_id: cycleId,
+      questions_locked: true,
+      forms_started_at: cycle.forms_started_at,
+      sent_count: emailResult.sent_count,
+      failed_count: emailResult.failed_count,
+      failed_faculty: emailResult.failed_faculty,
     };
   }
 }

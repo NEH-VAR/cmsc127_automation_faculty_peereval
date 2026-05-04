@@ -14,9 +14,9 @@ const DeanDashboard = ({ onLogout }) => {
   const renderView = () => {
     switch (currentView) {
       case 'select-faculty':
-        return <FacultyTable onComplete={() => setCurrentView('select-evaluators')} />;
+        return <FacultyTable onComplete={() => setCurrentView('questions')} />;
       case 'select-evaluators':
-        return <EvaluatorSelection onConfirm={() => setCurrentView('progress')} />;
+        return <EvaluatorSelection />;
       case 'questions':
         return <QuestionsPage />;
       case 'progress':

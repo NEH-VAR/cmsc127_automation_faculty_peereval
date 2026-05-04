@@ -81,15 +81,31 @@ const QuestionsPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [editing, setEditing] = useState(null);
   const [isEditingModalOpen, setIsEditingModalOpen] = useState(false);
+  const [activeCycle, setActiveCycle] = useState(null);
+  const [isFinalizing, setIsFinalizing] = useState(false);
   const { showToast } = useToast();
+
+  const isLocked = !!activeCycle?.questions_locked;
+
+  const formatTimestamp = (value, fallback) => {
+    if (!value) return fallback;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return fallback;
+    return date.toLocaleString();
+  };
+
+  const lockedTimestamp = activeCycle?.questions_locked
+    ? formatTimestamp(activeCycle.questions_locked_at, 'Locked')
+    : 'Not locked';
 
   const load = async () => {
     setIsLoading(true);
     try {
       // fetch all sections (including empty ones) and all questions
-      const [secsResp, questionsResp] = await Promise.all([
+      const [secsResp, questionsResp, cyclesResp] = await Promise.all([
         api.questionSections.listAll(),
         api.questions.findWithSections(),
+        api.evaluationCycles.listAll(),
       ]);
 
       // sections from backend include questions relation; normalize to expected shape
@@ -117,6 +133,10 @@ const QuestionsPage = () => {
 
       setSections(finalSections.sort((a, b) => (a.id === null ? 9999 : a.order ?? 0) - (b.id === null ? 9999 : b.order ?? 0)));
       setQuestions(qs);
+      const active = Array.isArray(cyclesResp)
+        ? cyclesResp.find((cycle) => cycle.is_active)
+        : null;
+      setActiveCycle(active || null);
     } catch (err) {
       showToast({ type: 'error', title: 'Unable to load questions', message: err.message || 'Try again' });
     } finally {
@@ -129,11 +149,29 @@ const QuestionsPage = () => {
   }, []);
 
   const openEditor = (question = null) => {
+    if (isLocked) {
+      showToast({
+        type: 'warning',
+        title: 'Questions locked',
+        message: 'Questions are finalized for the active cycle.',
+        actionText: 'Dismiss',
+      });
+      return;
+    }
     setEditing(question || { question_text: '', type: 'LIKERT', is_required: true, is_active: true, section_id: null, order_in_section: 0 });
     setIsEditingModalOpen(true);
   };
 
   const handleSave = async () => {
+    if (isLocked) {
+      showToast({
+        type: 'warning',
+        title: 'Questions locked',
+        message: 'Questions are finalized for the active cycle.',
+        actionText: 'Dismiss',
+      });
+      return;
+    }
     try {
       if (editing.question_id) {
         await api.questions.update(editing.question_id, editing);
@@ -150,6 +188,39 @@ const QuestionsPage = () => {
     }
   };
 
+  const handleFinalize = async () => {
+    if (!activeCycle) {
+      showToast({
+        type: 'error',
+        title: 'No active cycle',
+        message: 'Create or activate a cycle before finalizing questions.',
+        actionText: 'Dismiss',
+      });
+      return;
+    }
+
+    setIsFinalizing(true);
+    try {
+      await api.evaluationCycles.finalizeQuestions(activeCycle.cycle_id);
+      setActiveCycle((prev) => (prev ? { ...prev, questions_locked: true } : prev));
+      showToast({
+        type: 'success',
+        title: 'Questions finalized',
+        message: 'Questions are now locked and nomination emails were sent.',
+        actionText: 'Done',
+      });
+    } catch (err) {
+      showToast({
+        type: 'error',
+        title: 'Finalize failed',
+        message: err.message || 'Try again',
+        actionText: 'Dismiss',
+      });
+    } finally {
+      setIsFinalizing(false);
+    }
+  };
+
   return (
     <div className="flex-1 p-6 lg:p-12 bg-brand-bg min-h-screen">
       <div className="flex items-center justify-between mb-6">
@@ -158,7 +229,44 @@ const QuestionsPage = () => {
           <p className="text-sm text-brand-grey">Manage evaluation form questions and sections.</p>
         </div>
         <div>
-          <Button onClick={() => openEditor(null)} className="bg-brand-maroon text-white">Add Question</Button>
+          <Button
+            onClick={() => openEditor(null)}
+            disabled={isLocked}
+            className="bg-brand-maroon text-white"
+          >
+            Add Question
+          </Button>
+        </div>
+      </div>
+
+      {activeCycle && (
+        <div className={`mb-6 rounded-xl border px-4 py-3 text-sm ${isLocked ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>
+          {isLocked
+            ? `Questions are locked for the ${activeCycle.year} cycle.`
+            : `Questions are editable for the ${activeCycle.year} cycle.`}
+        </div>
+      )}
+
+      <div className="mb-6 rounded-2xl border border-gray-100 bg-white px-6 py-4">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-brand-grey">Active Cycle</div>
+            <div className="mt-1 text-base font-semibold text-brand-black">
+              {activeCycle ? activeCycle.year : 'None'}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-brand-grey">Forms Started</div>
+            <div className="mt-1 text-sm text-brand-black">
+              {activeCycle ? formatTimestamp(activeCycle.forms_started_at, 'Not started') : 'Not started'}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-brand-grey">Questions Locked</div>
+            <div className="mt-1 text-sm text-brand-black">
+              {activeCycle ? lockedTimestamp : 'Not locked'}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -171,7 +279,12 @@ const QuestionsPage = () => {
               <div key={sec.id}>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-lg font-semibold">{sec.name}</h3>
-                  <Button onClick={() => openEditor({ section_id: sec.id, question_text: '', type: 'LIKERT', is_required: true, is_active: true, order_in_section: sec.questions.length })}>Add in section</Button>
+                  <Button
+                    onClick={() => openEditor({ section_id: sec.id, question_text: '', type: 'LIKERT', is_required: true, is_active: true, order_in_section: sec.questions.length })}
+                    disabled={isLocked}
+                  >
+                    Add in section
+                  </Button>
                 </div>
                 <ul className="space-y-2">
                   {sec.questions.map((q) => (
@@ -187,6 +300,7 @@ const QuestionsPage = () => {
                       <div className="flex items-center gap-2">
                         <Button
                           onClick={(e) => { e.stopPropagation(); openEditor(q); }}
+                          disabled={isLocked}
                           className="bg-white border opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           Edit
@@ -218,6 +332,16 @@ const QuestionsPage = () => {
           </div>
         </div>
       )}
+
+      <div className="mt-10 flex justify-end">
+        <Button
+          onClick={handleFinalize}
+          disabled={isFinalizing || isLocked || !activeCycle}
+          className="w-full lg:w-auto bg-brand-maroon text-white px-12 py-3 h-auto rounded-[16px] text-lg font-medium transition-all shadow-[0_8px_20px_-4px_rgba(123,17,19,0.3)]"
+        >
+          {isLocked ? 'Questions Finalized' : isFinalizing ? 'Finalizing...' : 'Finalize Questions'}
+        </Button>
+      </div>
     </div>
   );
 };

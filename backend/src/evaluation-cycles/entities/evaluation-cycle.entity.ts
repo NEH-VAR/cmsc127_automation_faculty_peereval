@@ -17,6 +17,12 @@ export class EvaluationCycle {
   @Column({ type: 'boolean', default: true })
   is_active: boolean;
 
+  @Column({ type: 'timestamp', nullable: true })
+  forms_started_at: Date;
+
+  @Column({ type: 'boolean', default: false })
+  questions_locked: boolean;
+
   @Column({ type: 'int', default: 5 })
   max_evaluations_per_faculty: number;
 }

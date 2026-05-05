@@ -452,7 +452,7 @@ export const api = {
   },
   evaluationSummaries: {
     getPdf: async (summaryId) => {
-      const response = await fetch(`${API_BASE_URL}/api/evaluation-summaries/${summaryId}/pdf-structure`, {
+      const response = await fetch(`${API_BASE_URL}/api/pdf-services/evaluation-summary/${summaryId}/pdf`, {
         headers: {
           ...getAuthHeaders(),
         },
@@ -463,7 +463,6 @@ export const api = {
         throw new Error(error.message || 'Failed to load PDF');
       }
 
-      // Return blob for PDF download
       return response.blob();
     },
   },

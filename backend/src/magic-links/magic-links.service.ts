@@ -25,7 +25,7 @@ export class MagicLinksService {
   async createLink(createDto: CreateMagicLinkDto): Promise<MagicLink> {
     const tokenHash = crypto.randomBytes(32).toString('hex');
 
-    const expirationDays = this.configService.get<number>('MAGIC_LINK_EXPIRATION_DAYS', 7);
+    const expirationDays = this.configService.get<number>('MAGIC_LINK_EXPIRATION_DAYS', 31);
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + expirationDays);
     
@@ -105,5 +105,33 @@ export class MagicLinksService {
       throw new NotFoundException(`Magic link #${tokenId} not found`);
     }
     this.logger.log(`Magic link with ID ${tokenId} has been removed.`);
+  }
+
+  /**
+   * Extends the expiration of an existing magic link by adding another 31 days.
+   * This is used when admin resends a link (e.g., reminder emails).
+   * @param tokenId - The primary key of the link to extend.
+   * @returns The updated MagicLink with new expiration date.
+   */
+  async extendExpiration(tokenId: number): Promise<MagicLink> {
+    const link = await this.magicLinkRepo.findOne({
+      where: { token_id: tokenId },
+    });
+
+    if (!link) {
+      throw new NotFoundException(`Magic link #${tokenId} not found`);
+    }
+
+    const expirationDays = this.configService.get<number>('MAGIC_LINK_EXPIRATION_DAYS', 31);
+    const newExpiresAt = new Date(link.expires_at);
+    newExpiresAt.setDate(newExpiresAt.getDate() + expirationDays);
+
+    link.expires_at = newExpiresAt;
+    const updated = await this.magicLinkRepo.save(link);
+
+    this.logger.log(
+      `Magic link #${tokenId} expiration extended to ${newExpiresAt.toISOString()}`,
+    );
+    return updated;
   }
 }

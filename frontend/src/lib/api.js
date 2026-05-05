@@ -450,6 +450,23 @@ export const api = {
       return response.json();
     },
   },
+  evaluationSummaries: {
+    getPdf: async (summaryId) => {
+      const response = await fetch(`${API_BASE_URL}/api/evaluation-summaries/${summaryId}/pdf-structure`, {
+        headers: {
+          ...getAuthHeaders(),
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to load PDF');
+      }
+
+      // Return blob for PDF download
+      return response.blob();
+    },
+  },
 };
 
 // Helper function to add auth token to requests

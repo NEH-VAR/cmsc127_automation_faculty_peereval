@@ -7,6 +7,8 @@ import { Evaluation, EvaluationStatus } from '../evaluations/entities/evaluation
 import { MagicLink, MagicLinkPurpose } from '../magic-links/entities/magic-link.entity';
 import { EvaluationSummary } from '../evaluation-summaries/entities/evaluation-summary.entity';
 import { QuestionType } from '../questions/entities/question.entity';
+import { PdfServicesService } from '../pdf-services/pdf-services.service';
+import { UserRole } from '../users/entities/user.entity';
 
 type EvaluatorResponse = {
   evaluator_id: number;
@@ -62,6 +64,7 @@ export class AnswersService {
   constructor(
     @InjectRepository(Answer) private answerRepo: Repository<Answer>,
     private dataSource: DataSource,
+    private pdfService: PdfServicesService,
   ) {}
 
   async submitAnswers(evaluatorId: number, dto: SubmitEvaluationDto, tokenId?: number) {
@@ -332,5 +335,21 @@ export class AnswersService {
       section_statistics: summaryData.section_statistics,
       open_ended_comments: summaryData.open_ended_comments,
     });
+
+      // Generate PDF asynchronously after transaction commits
+      const savedSummary = await queryRunner.manager.findOne(EvaluationSummary, {
+        where: { evaluatee_id: evaluateeId, cycle_id: cycleId },
+      });
+
+      if (savedSummary) {
+        // Schedule PDF generation asynchronously (fire and forget)
+        this.pdfService.generateEvaluationSummaryPdf(
+          savedSummary.summary_id,
+          evaluateeId,
+          UserRole.ADMIN
+        ).catch((error) => {
+          console.error(`Failed to generate PDF for summary #${savedSummary.summary_id}:`, error);
+        });
+      }
   }
 }

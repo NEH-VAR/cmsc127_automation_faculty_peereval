@@ -6,6 +6,7 @@ import { EvaluationCycle } from './entities/evaluation-cycle.entity';
 import { EvaluationCycleFaculty } from './entities/evaluation-cycle-faculty.entity';
 import { Nomination, NominationStatus } from '../nominations/entities/nomination.entity';
 import { Evaluation, EvaluationStatus } from '../evaluations/entities/evaluation.entity';
+import { EvaluationSummary } from '../evaluation-summaries/entities/evaluation-summary.entity';
 import { CreateEvaluationCycleDto } from './dto/create-evaluation-cycle.dto';
 import { UpdateEvaluationCycleDto } from './dto/update-evaluation-cycle.dto';
 import { AssignFacultyToCycleDto } from './dto/assign-faculty-to-cycle.dto';
@@ -27,6 +28,8 @@ export class EvaluationCyclesService {
     private readonly nominationRepo: Repository<Nomination>,
     @InjectRepository(Evaluation)
     private readonly evaluationRepo: Repository<Evaluation>,
+    @InjectRepository(EvaluationSummary)
+    private readonly summaryRepo: Repository<EvaluationSummary>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly emailService: EmailService,
@@ -94,6 +97,12 @@ export class EvaluationCyclesService {
         };
       }));
 
+      // Check if summary exists and if PDF is generated
+      const summary = await this.summaryRepo.findOne({
+        where: { evaluatee_id: user.user_id, cycle_id: cycleId },
+      });
+      const hasPdf = !!summary?.document_url;
+
       return {
         user_id: user.user_id,
         full_name: user.full_name,
@@ -111,6 +120,8 @@ export class EvaluationCyclesService {
         })),
         approved_nominations: approvedWithStatus,
         evaluations_completed_count: completedEvaluationsCount,
+        summary_id: summary?.summary_id || null,
+        has_pdf: hasPdf,
       };
     }));
 

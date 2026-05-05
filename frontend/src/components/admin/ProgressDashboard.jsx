@@ -60,6 +60,8 @@ const ProgressDashboard = () => {
           missing_nominations: m.missing_nominations,
           nominations: m.nominations || [],
           approved_nominations: m.approved_nominations || [],
+          summary_id: m.summary_id || null,
+          has_pdf: m.has_pdf || false,
         }));
 
         setProgressData(rows);
@@ -182,49 +184,81 @@ const ProgressDashboard = () => {
                   </td>
 
                   <td className="px-8 py-6 text-right align-top">
-                    <div className="flex items-center justify-end gap-3">
-                      <button
-                        className="px-3 py-1 bg-yellow-50 text-yellow-700 rounded-md text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
-                        disabled={sendingReminderId === faculty.id}
-                        onClick={async () => {
-                          setRowErrors((prev) => ({ ...prev, [faculty.id]: null }));
-                          setSendingReminderId(faculty.id);
-                          try {
-                            await api.evaluationCycles.remindEvaluators(cycleInfo.cycle_id, faculty.id);
-                            showToast({ type: 'success', title: 'Reminders sent', message: 'Reminder emails were sent to pending evaluators.' });
-                            // reload progress
-                            const progress = await api.evaluationCycles.getProgress(cycleInfo.cycle_id);
-                            const rows = (progress.members || []).map((m) => ({
-                              id: m.user_id,
-                              name: m.full_name,
-                              title: '',
-                              completed: m.evaluations_completed_count,
-                              total: 3,
-                              nominations_submitted: m.nominations_submitted,
-                              nominations_complete: m.nominations_complete,
-                              missing_nominations: m.missing_nominations,
-                              nominations: m.nominations || [],
-                              approved_nominations: m.approved_nominations || [],
-                            }));
-                            setProgressData(rows);
-                          } catch (err) {
-                            setRowErrors((prev) => ({ ...prev, [faculty.id]: err.message || 'Could not send reminders' }));
-                            showToast({ type: 'error', title: 'Failed', message: err.message || 'Could not send reminders' });
-                          } finally {
-                            setSendingReminderId((current) => (current === faculty.id ? null : current));
-                          }
-                        }}
-                      >
-                        {sendingReminderId === faculty.id ? 'Sending...' : 'Send Reminder'}
-                      </button>
+                     {percentage === 100 && faculty.summary_id ? (
+                       <div className="flex items-center justify-end gap-3 mt-3">
+                         <button
+                           className={`px-3 py-1 rounded-md text-sm font-semibold ${
+                             !faculty.has_pdf
+                               ? 'bg-blue-50 text-blue-600 opacity-60 cursor-not-allowed'
+                               : 'bg-green-50 text-brand-green hover:bg-green-100'
+                           }`}
+                           disabled={!faculty.has_pdf}
+                           onClick={async () => {
+                             try {
+                               const blob = await api.evaluationSummaries.getPdf(faculty.summary_id);
+                               const url = window.URL.createObjectURL(blob);
+                               const a = document.createElement('a');
+                               a.href = url;
+                               a.download = `evaluation_summary_${faculty.name.replace(/\s+/g, '_')}.pdf`;
+                               document.body.appendChild(a);
+                               a.click();
+                               a.remove();
+                               window.URL.revokeObjectURL(url);
+                             } catch (err) {
+                               showToast({ type: 'error', title: 'Failed', message: 'Could not download PDF' });
+                             }
+                           }}
+                         >
+                           {!faculty.has_pdf ? 'Generating PDF...' : 'View PDF'}
+                         </button>
+                       </div>
+                     ) : (
+                       <div className="flex items-center justify-end gap-3 mt-3">
+                         <button
+                           className="px-3 py-1 bg-yellow-50 text-yellow-700 rounded-md text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
+                           disabled={sendingReminderId === faculty.id}
+                           onClick={async () => {
+                             setRowErrors((prev) => ({ ...prev, [faculty.id]: null }));
+                             setSendingReminderId(faculty.id);
+                             try {
+                               await api.evaluationCycles.remindEvaluators(cycleInfo.cycle_id, faculty.id);
+                               showToast({ type: 'success', title: 'Reminders sent', message: 'Reminder emails were sent to pending evaluators.' });
+                               // reload progress
+                               const progress = await api.evaluationCycles.getProgress(cycleInfo.cycle_id);
+                               const rows = (progress.members || []).map((m) => ({
+                                 id: m.user_id,
+                                 name: m.full_name,
+                                 title: '',
+                                 completed: m.evaluations_completed_count,
+                                 total: 3,
+                                 nominations_submitted: m.nominations_submitted,
+                                 nominations_complete: m.nominations_complete,
+                                 missing_nominations: m.missing_nominations,
+                                 nominations: m.nominations || [],
+                                 approved_nominations: m.approved_nominations || [],
+                                 summary_id: m.summary_id || null,
+                                 has_pdf: m.has_pdf || false,
+                               }));
+                               setProgressData(rows);
+                             } catch (err) {
+                               setRowErrors((prev) => ({ ...prev, [faculty.id]: err.message || 'Could not send reminders' }));
+                               showToast({ type: 'error', title: 'Failed', message: err.message || 'Could not send reminders' });
+                             } finally {
+                               setSendingReminderId((current) => (current === faculty.id ? null : current));
+                             }
+                           }}
+                         >
+                           {sendingReminderId === faculty.id ? 'Sending...' : 'Send Reminder'}
+                         </button>
 
-                      <button
-                        className="px-3 py-1 bg-gray-50 text-brand-black rounded-md text-sm font-semibold"
-                        onClick={() => setSelectedNominations(faculty)}
-                      >
-                        View Nominations
-                      </button>
-                    </div>
+                         <button
+                           className="px-3 py-1 bg-gray-50 text-brand-black rounded-md text-sm font-semibold"
+                           onClick={() => setSelectedNominations(faculty)}
+                         >
+                           View Nominations
+                         </button>
+                       </div>
+                     )}
                     {rowErrors[faculty.id] && (
                       <p className="mt-2 text-xs font-medium text-red-600 text-right max-w-[18rem] ml-auto">
                         {rowErrors[faculty.id]}

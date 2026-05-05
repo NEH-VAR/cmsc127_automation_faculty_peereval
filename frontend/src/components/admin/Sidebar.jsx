@@ -1,10 +1,51 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Home, Bell, FileText, LayoutDashboard, Settings, ChevronDown, X, LogOut } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import logo from '../../assets/website logo.svg';
 import facultyIcon from '../../assets/faculty-icon.svg';
+import { api, parseJwt } from '../../lib/api';
 
 const Sidebar = ({ isOpen, onClose, onLogout }) => {
+  const [user, setUser] = useState(() => api.auth.getUser());
+
+  useEffect(() => {
+    const storedUser = api.auth.getUser();
+    setUser(storedUser);
+
+    const token = api.auth.getToken();
+    const payload = parseJwt(token);
+    const userId = storedUser?.user_id || payload?.sub;
+
+    if (!userId) {
+      return;
+    }
+
+    if (storedUser?.full_name && storedUser?.email) {
+      return;
+    }
+
+    let isActive = true;
+    api.users
+      .getById(userId)
+      .then((profile) => {
+        if (!isActive) return;
+        const merged = {
+          ...storedUser,
+          ...profile,
+          user_id: profile.user_id || userId,
+        };
+        api.auth.setUser(merged);
+        setUser(merged);
+      })
+      .catch((error) => {
+        console.warn('Failed to load sidebar user details:', error);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
   const navItems = [
     { icon: Home, label: 'Home', path: '/dean-dashboard' },
     { icon: FileText, label: 'Faculty Nominations', path: '/faculty-nominations' },
@@ -24,6 +65,12 @@ const Sidebar = ({ isOpen, onClose, onLogout }) => {
     if (onLogout) onLogout();
     navigate('/');
   };
+
+  const displayName = user?.full_name || user?.email || 'Account';
+  const displayEmail = user?.email || '';
+  const avatarSrc = user?.image_base64
+    ? `data:image/png;base64,${user.image_base64}`
+    : facultyIcon;
 
   return (
     <>
@@ -79,11 +126,11 @@ const Sidebar = ({ isOpen, onClose, onLogout }) => {
         <div className="p-4 border-t border-gray-100 space-y-3">
           <button className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors group">
             <div className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden">
-               <img src={facultyIcon} alt="User profile" className="w-full h-full object-cover" />
+              <img src={avatarSrc} alt="User profile" className="w-full h-full object-cover" />
             </div>
             <div className="flex-1 text-left min-w-0">
-              <p className="text-sm font-semibold text-brand-black truncate">Admin User</p>
-              <p className="text-xs text-brand-grey truncate">admin@example.com</p>
+              <p className="text-sm font-semibold text-brand-black truncate">{displayName}</p>
+              <p className="text-xs text-brand-grey truncate">{displayEmail}</p>
             </div>
             <ChevronDown className="w-4 h-4 text-brand-grey group-hover:text-brand-black transition-colors" />
           </button>

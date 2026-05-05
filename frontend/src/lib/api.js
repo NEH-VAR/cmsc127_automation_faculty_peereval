@@ -1,4 +1,8 @@
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
+
+if (!API_BASE_URL) {
+  throw new Error('VITE_BACKEND_URL is not set. Provide it in the frontend environment.');
+}
 
 export const api = {
   // Authentication endpoints
@@ -472,4 +476,18 @@ export const api = {
 export const getAuthHeaders = () => {
   const token = api.auth.getToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+export const parseJwt = (token) => {
+  if (!token) return null;
+  const payload = token.split('.')[1];
+  if (!payload) return null;
+
+  try {
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, '=');
+    return JSON.parse(atob(padded));
+  } catch {
+    return null;
+  }
 };

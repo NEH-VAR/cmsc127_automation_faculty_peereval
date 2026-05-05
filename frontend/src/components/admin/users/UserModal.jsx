@@ -132,25 +132,25 @@ const UserModal = ({
             </select>
           </div>
 
-          <div>
-            <label className="mb-2 block text-sm font-medium text-brand-black" htmlFor="password">
-              Password (optional)
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={formData.password}
-              onChange={(event) => setFormData((prev) => ({ ...prev, password: event.target.value }))}
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-brand-green"
-              placeholder={
-                isEdit
-                  ? 'Leave blank to keep current password'
-                  : formData.role === 'Faculty'
-                    ? 'Leave blank for faculty'
+          {formData.role !== 'Faculty' && (
+            <div>
+              <label className="mb-2 block text-sm font-medium text-brand-black" htmlFor="password">
+                Password (Required)
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={formData.password}
+                onChange={(event) => setFormData((prev) => ({ ...prev, password: event.target.value }))}
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-brand-green"
+                placeholder={
+                  isEdit
+                    ? 'Leave blank to keep current password'
                     : 'Set a password'
-              }
-            />
-          </div>
+                }
+              />
+            </div>
+          )}
 
           <div className="flex items-center justify-end gap-3 pt-2">
             <button

@@ -5,15 +5,25 @@ import { Question } from './entities/question.entity';
 import { QuestionSection } from './entities/question-section.entity';
 import { CreateQuestionDto } from './dto/create-question.dto';
 import { UpdateQuestionDto } from './dto/update-question.dto';
+import { EvaluationCycle } from '../evaluation-cycles/entities/evaluation-cycle.entity';
 
 @Injectable()
 export class QuestionsService {
   constructor(
     @InjectRepository(Question) private readonly questionRepo: Repository<Question>,
     @InjectRepository(QuestionSection) private readonly sectionRepo: Repository<QuestionSection>,
+    @InjectRepository(EvaluationCycle) private readonly cycleRepo: Repository<EvaluationCycle>,
   ) {}
 
+  private async ensureQuestionsUnlocked() {
+    const activeCycle = await this.cycleRepo.findOne({ where: { is_active: true } });
+    if (activeCycle?.questions_locked) {
+      throw new BadRequestException('Questions are locked for the active evaluation cycle.');
+    }
+  }
+
   async create(createDto: CreateQuestionDto) {
+    await this.ensureQuestionsUnlocked();
     // Validate section exists if section_id is provided
     if (createDto.section_id) {
       const section = await this.sectionRepo.findOne({
@@ -36,6 +46,7 @@ export class QuestionsService {
   }
 
   async update(id: number, updateDto: UpdateQuestionDto) {
+    await this.ensureQuestionsUnlocked();
     // Validate section exists if section_id is being updated
     if (updateDto.section_id) {
       const section = await this.sectionRepo.findOne({

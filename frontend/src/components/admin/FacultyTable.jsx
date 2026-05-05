@@ -21,6 +21,7 @@ const FacultyTable = ({ onComplete }) => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [loadError, setLoadError] = useState('');
@@ -192,6 +193,20 @@ const FacultyTable = ({ onComplete }) => {
   const selectAll = () => setSelectedIds(members.filter((member) => member.role === 'Faculty').map((member) => member.id));
   const deselectAll = () => setSelectedIds([]);
 
+  const buildNewCyclePayload = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const startDate = now.toISOString().split('T')[0];
+    const endDate = new Date(year, 11, 31).toISOString().split('T')[0];
+
+    return {
+      year,
+      start_date: startDate,
+      end_date: endDate,
+      is_active: true,
+    };
+  };
+
   const handleCreateUser = async (event) => {
     event.preventDefault();
 
@@ -338,20 +353,33 @@ const FacultyTable = ({ onComplete }) => {
     setIsPopupOpen(true);
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     setIsPopupOpen(false);
-    // Simulate transaction
-    showToast({
-      type: 'success',
-      title: 'Success',
-      message: `Form generation started for ${selectedIds.length} faculty members.`,
-      actionText: 'View'
-    });
-    
-    // Proceed to next step after a short delay
-    setTimeout(() => {
+    setIsStarting(true);
+
+    try {
+      const cyclePayload = buildNewCyclePayload();
+      const cycle = await api.evaluationCycles.create(cyclePayload);
+      await api.evaluationCycles.assignFaculty(cycle.cycle_id, selectedIds);
+
+      showToast({
+        type: 'success',
+        title: 'Cycle created',
+        message: `Cycle ${cycle.year} created. Review and finalize questions next.`,
+        actionText: 'Go to Questions',
+      });
+
       onComplete?.();
-    }, 1500);
+    } catch (error) {
+      showToast({
+        type: 'error',
+        title: 'Unable to start forms',
+        message: error.message || 'Please try again.',
+        actionText: 'Dismiss',
+      });
+    } finally {
+      setIsStarting(false);
+    }
   };
 
   return (
@@ -377,9 +405,10 @@ const FacultyTable = ({ onComplete }) => {
       <div className="mt-8 lg:mt-12 flex justify-end">
         <Button 
           onClick={handleStartForms}
+          disabled={isStarting}
           className="w-full lg:w-auto bg-brand-maroon hover:opacity-90 text-white px-12 py-3 h-auto rounded-[16px] text-lg font-medium transition-all shadow-[0_8px_20px_-4px_rgba(123,17,19,0.3)]"
         >
-          Start Forms
+          {isStarting ? 'Starting...' : 'Start Forms'}
         </Button>
       </div>
 

@@ -323,6 +323,136 @@ export class NominationsService {
     }
   }
 
+  // Resend evaluation emails (reminders) for an evaluatee in a specific cycle
+  async resendEvaluationEmailsForEvaluatee(cycleId: number, evaluateeId: number) {
+    const approved = await this.nomRepo.find({
+      where: { cycle_id: cycleId, evaluatee_id: evaluateeId, status: NominationStatus.APPROVED },
+    });
+
+    if (!approved || approved.length === 0) {
+      return { message: 'No approved nominations found for this evaluatee in the specified cycle.' };
+    }
+
+    const nominationIds = approved.map(n => n.nomination_id);
+
+    // Find evaluations for these nominations that are not yet completed
+    const evaluations = await this.dataSource.getRepository(Evaluation).find({
+      where: { nomination_id: In(nominationIds) },
+      relations: ['nomination'],
+    });
+
+    const pendingNominationIds = evaluations
+      .filter(e => e.status !== EvaluationStatus.COMPLETED)
+      .map(e => e.nomination_id);
+
+    if (pendingNominationIds.length === 0) {
+      return { message: 'All evaluators have already completed their evaluations.' };
+    }
+
+    const result = await this.resendEvaluationEmails(pendingNominationIds);
+    return {
+      message: 'Reminder emails sent',
+      success: result.success,
+      failed: result.failed,
+    };
+  }
+
+  private async resendEvaluationEmails(nominationIds: number[]) {
+    const sentCount = { success: 0, failed: 0 };
+    const failedEvaluators: Array<{ evaluator_id: number; email: string; error: string }> = [];
+
+    if (nominationIds.length === 0) {
+      return sentCount;
+    }
+
+    try {
+      // Get evaluations with evaluator and evaluatee details
+      const evaluations = await this.dataSource.getRepository(Evaluation).find({
+        where: { nomination_id: In(nominationIds) },
+        relations: [
+          'nomination',
+          'nomination.evaluator',
+          'nomination.evaluatee',
+          'nomination.cycle',
+        ],
+      });
+
+      const frontendUrl = this.configService.get<string>('FRONTEND_URL');
+      if (!frontendUrl) {
+        throw new Error('FRONTEND_URL must be set to send evaluation emails.');
+      }
+
+      // Resend email to each evaluator by extending existing magic link
+      for (const evaluation of evaluations) {
+        try {
+          const evaluator = evaluation.nomination.evaluator;
+          const evaluatee = evaluation.nomination.evaluatee;
+          const cycle = evaluation.nomination.cycle;
+
+          // Find existing magic link for this evaluation
+          const existingLink = await this.dataSource.getRepository(MagicLink).findOne({
+            where: {
+              user_id: evaluator.user_id,
+              purpose: MagicLinkPurpose.EVALUATION,
+              reference_id: evaluation.evaluation_id,
+            },
+          });
+
+          let magicLink;
+          if (existingLink) {
+            // Extend existing link's expiration
+            magicLink = await this.magicLinksService.extendExpiration(existingLink.token_id);
+          } else {
+            // Create new link if none exists
+            magicLink = await this.magicLinksService.createLink({
+              user_id: evaluator.user_id,
+              purpose: MagicLinkPurpose.EVALUATION,
+              reference_id: evaluation.evaluation_id,
+            });
+          }
+
+          // Build magic link URL
+          const magicLinkUrl = `${frontendUrl}/evaluate?token=${magicLink.token_hash}`;
+
+          // Send email
+          await this.emailService.sendEvaluationMagicLinkEmail(
+            evaluator.email,
+            evaluator.full_name,
+            evaluatee.full_name,
+            magicLinkUrl,
+            `Year ${cycle.year}`,
+          );
+
+          sentCount.success++;
+          this.logger.log(
+            `Evaluation reminder email sent to evaluator #${evaluator.user_id} (${evaluator.email}) for evaluation of #${evaluatee.user_id}.`,
+          );
+        } catch (error) {
+          sentCount.failed++;
+          failedEvaluators.push({
+            evaluator_id: evaluation.nomination.evaluator_id,
+            email: evaluation.nomination.evaluator.email,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+          this.logger.error(
+            `Failed to send evaluation reminder email to evaluator #${evaluation.nomination.evaluator_id} (${evaluation.nomination.evaluator.email}): ${error}`,
+          );
+        }
+      }
+
+      if (sentCount.failed > 0) {
+        this.logger.warn(
+          `Evaluation reminder email sending completed with ${sentCount.success} successes and ${sentCount.failed} failures.`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(`Error in resendEvaluationEmails: ${error}`);
+      // Log but don't throw - email failure shouldn't fail the reminder process
+    }
+
+    return sentCount;
+  }
+
   private async sendEvaluationEmails(nominationIds: number[]) {
     const sentCount = { success: 0, failed: 0 };
     const failedEvaluators: Array<{ evaluator_id: number; email: string; error: string }> = [];

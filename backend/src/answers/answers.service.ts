@@ -7,6 +7,8 @@ import { Evaluation, EvaluationStatus } from '../evaluations/entities/evaluation
 import { MagicLink, MagicLinkPurpose } from '../magic-links/entities/magic-link.entity';
 import { EvaluationSummary } from '../evaluation-summaries/entities/evaluation-summary.entity';
 import { QuestionType } from '../questions/entities/question.entity';
+import { PdfServicesService } from '../pdf-services/pdf-services.service';
+import { UserRole } from '../users/entities/user.entity';
 
 type EvaluatorResponse = {
   evaluator_id: number;
@@ -62,6 +64,7 @@ export class AnswersService {
   constructor(
     @InjectRepository(Answer) private answerRepo: Repository<Answer>,
     private dataSource: DataSource,
+    private pdfService: PdfServicesService,
   ) {}
 
   async submitAnswers(evaluatorId: number, dto: SubmitEvaluationDto, tokenId?: number) {
@@ -122,9 +125,19 @@ export class AnswersService {
       await queryRunner.manager.update(MagicLink, tokenId, { is_used: true });
 
       // 5. Generate the summary if this completion finished the full set of evaluations
-      await this.generateSummaryIfComplete(queryRunner, evaluation.evaluation_id);
+      const generatedSummaryId = await this.generateSummaryIfComplete(queryRunner, evaluation.evaluation_id);
 
       await queryRunner.commitTransaction();
+
+      if (generatedSummaryId) {
+        this.pdfService.generateEvaluationSummaryPdf(
+          generatedSummaryId,
+          evaluation.nomination.evaluatee_id,
+          UserRole.ADMIN,
+        ).catch((error) => {
+          console.error(`Failed to generate PDF for summary #${generatedSummaryId}:`, error);
+        });
+      }
 
       return { message: 'Evaluation submitted successfully' };
     } catch (err) {
@@ -180,7 +193,7 @@ export class AnswersService {
     });
 
     if (summaryExists) {
-      return;
+      return summaryExists.summary_id;
     }
 
     const completionCounts = await queryRunner.manager
@@ -200,7 +213,7 @@ export class AnswersService {
     const completedCount = Number(completionCounts?.completed_count ?? 0);
 
     if (completedCount < 3) {
-      return;
+      return null;
     }
 
     const completedAnswers = await queryRunner.manager
@@ -323,7 +336,7 @@ export class AnswersService {
       open_ended_comments: Array.from(openEndedMap.values()),
     };
 
-    await queryRunner.manager.save(EvaluationSummary, {
+    const savedSummary = await queryRunner.manager.save(EvaluationSummary, {
       cycle_id: summaryData.cycle_id,
       evaluatee_id: summaryData.evaluatee_id,
       average_score: summaryData.average_score,
@@ -332,5 +345,7 @@ export class AnswersService {
       section_statistics: summaryData.section_statistics,
       open_ended_comments: summaryData.open_ended_comments,
     });
+
+    return savedSummary.summary_id;
   }
 }

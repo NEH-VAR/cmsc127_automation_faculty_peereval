@@ -254,4 +254,23 @@ export class EvaluationSummariesService {
       document_url: pdfData.document_url,
     };
   }
+
+  async getStoredPdfDocument(summaryId: number, requesterId: number, role: UserRole) {
+    const summary = await this.summaryRepo.findOne({
+      where: { summary_id: summaryId },
+      relations: ['evaluatee'],
+    });
+
+    if (!summary) {
+      throw new NotFoundException(`Evaluation summary #${summaryId} not found`);
+    }
+
+    this.ensureCanViewSummary(summary, requesterId, role);
+
+    if (!summary.document_url || summary.document_url.length === 0) {
+      throw new BadRequestException('PDF is not available yet. It is still being generated asynchronously.');
+    }
+
+    return summary.document_url;
+  }
 }

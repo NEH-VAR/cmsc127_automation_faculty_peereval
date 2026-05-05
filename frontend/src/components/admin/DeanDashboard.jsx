@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import Sidebar from './Sidebar';
 import FacultyTable from './FacultyTable';
 import EvaluatorSelection from './EvaluatorSelection';
@@ -6,33 +6,33 @@ import ProgressDashboard from './ProgressDashboard';
 import QuestionsPage from './QuestionsPage';
 import { Menu } from 'lucide-react';
 import logo from '../../assets/website logo.svg';
+import { Navigate, useLocation } from 'react-router-dom';
 
 const DeanDashboard = ({ onLogout }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [currentView, setCurrentView] = useState('select-faculty');
+  const location = useLocation();
 
-  const renderView = () => {
-    switch (currentView) {
-      case 'select-faculty':
-        return <FacultyTable onComplete={() => setCurrentView('select-evaluators')} />;
-      case 'select-evaluators':
-        return <EvaluatorSelection onConfirm={() => setCurrentView('progress')} />;
-      case 'questions':
+  const view = useMemo(() => {
+    switch (location.pathname) {
+      case '/dean-dashboard':
+      case '/dean-deashboard':
+        return <FacultyTable />;
+      case '/faculty-nominations':
+        return <EvaluatorSelection />;
+      case '/questions':
         return <QuestionsPage />;
-      case 'progress':
+      case '/dashboard':
         return <ProgressDashboard />;
       default:
-        return <FacultyTable />;
+        return <Navigate to="/dean-dashboard" replace />;
     }
-  };
+  }, [location.pathname]);
 
   return (
     <div className="flex min-h-screen bg-brand-bg relative">
       <Sidebar 
         isOpen={isSidebarOpen} 
         onClose={() => setIsSidebarOpen(false)} 
-        currentView={currentView}
-        onNavigate={(view) => setCurrentView(view)}
         onLogout={onLogout}
       />
       
@@ -50,7 +50,7 @@ const DeanDashboard = ({ onLogout }) => {
         </header>
 
         <div className="flex-1 overflow-y-auto">
-          {renderView()}
+          {view}
         </div>
       </main>
     </div>

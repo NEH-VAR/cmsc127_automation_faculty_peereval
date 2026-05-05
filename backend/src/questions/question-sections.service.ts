@@ -1,17 +1,27 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { QuestionSection } from './entities/question-section.entity';
 import { CreateQuestionSectionDto } from './dto/create-question-section.dto';
 import { UpdateQuestionSectionDto } from './dto/update-question-section.dto';
+import { EvaluationCycle } from '../evaluation-cycles/entities/evaluation-cycle.entity';
 
 @Injectable()
 export class QuestionSectionsService {
   constructor(
     @InjectRepository(QuestionSection) private readonly sectionRepo: Repository<QuestionSection>,
+    @InjectRepository(EvaluationCycle) private readonly cycleRepo: Repository<EvaluationCycle>,
   ) {}
 
+  private async ensureQuestionsUnlocked() {
+    const activeCycle = await this.cycleRepo.findOne({ where: { is_active: true } });
+    if (activeCycle?.questions_locked) {
+      throw new BadRequestException('Questions are locked for the active evaluation cycle.');
+    }
+  }
+
   async create(createDto: CreateQuestionSectionDto) {
+    await this.ensureQuestionsUnlocked();
     // Check if section with same name already exists
     const existing = await this.sectionRepo.findOne({
       where: { name: createDto.name },
@@ -46,6 +56,7 @@ export class QuestionSectionsService {
   }
 
   async update(id: number, updateDto: UpdateQuestionSectionDto) {
+    await this.ensureQuestionsUnlocked();
     const section = await this.sectionRepo.preload({
       id,
       ...updateDto,
@@ -70,6 +81,7 @@ export class QuestionSectionsService {
   }
 
   async delete(id: number) {
+    await this.ensureQuestionsUnlocked();
     const section = await this.findById(id);
     return this.sectionRepo.remove(section);
   }

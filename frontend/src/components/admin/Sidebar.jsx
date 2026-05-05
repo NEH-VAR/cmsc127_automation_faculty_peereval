@@ -1,22 +1,76 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Home, Bell, FileText, LayoutDashboard, Settings, ChevronDown, X, LogOut } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import logo from '../../assets/website logo.svg';
 import facultyIcon from '../../assets/faculty-icon.svg';
+import { api, parseJwt } from '../../lib/api';
 
-const Sidebar = ({ isOpen, onClose, currentView, onNavigate, onLogout }) => {
+const Sidebar = ({ isOpen, onClose, onLogout }) => {
+  const [user, setUser] = useState(() => api.auth.getUser());
+
+  useEffect(() => {
+    const storedUser = api.auth.getUser();
+    setUser(storedUser);
+
+    const token = api.auth.getToken();
+    const payload = parseJwt(token);
+    const userId = storedUser?.user_id || payload?.sub;
+
+    if (!userId) {
+      return;
+    }
+
+    if (storedUser?.full_name && storedUser?.email) {
+      return;
+    }
+
+    let isActive = true;
+    api.users
+      .getById(userId)
+      .then((profile) => {
+        if (!isActive) return;
+        const merged = {
+          ...storedUser,
+          ...profile,
+          user_id: profile.user_id || userId,
+        };
+        api.auth.setUser(merged);
+        setUser(merged);
+      })
+      .catch((error) => {
+        console.warn('Failed to load sidebar user details:', error);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
   const navItems = [
-    { icon: Home, label: 'Home', view: 'select-faculty' },
-    { icon: Bell, label: 'Notifications' },
-    { icon: FileText, label: 'Forms', view: 'select-evaluators' },
-    { icon: FileText, label: 'Questions', view: 'questions' },
-    { icon: LayoutDashboard, label: 'Dashboard', view: 'progress' },
-    { icon: Settings, label: 'Settings' },
+    { icon: Home, label: 'Home', path: '/dean-dashboard' },
+    { icon: FileText, label: 'Faculty Nominations', path: '/faculty-nominations' },
+    { icon: FileText, label: 'Questions', path: '/questions' },
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
   ];
 
   const sidebarClasses = `
     fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-100 flex flex-col h-screen transition-transform duration-300 ease-in-out lg:translate-x-0 lg:sticky lg:top-0 lg:self-start lg:flex
     ${isOpen ? 'translate-x-0' : '-translate-x-full'}
   `;
+
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleLogout = () => {
+    if (onLogout) onLogout();
+    navigate('/');
+  };
+
+  const displayName = user?.full_name || user?.email || 'Account';
+  const displayEmail = user?.email || '';
+  const avatarSrc = user?.image_base64
+    ? `data:image/png;base64,${user.image_base64}`
+    : facultyIcon;
 
   return (
     <>
@@ -47,15 +101,13 @@ const Sidebar = ({ isOpen, onClose, currentView, onNavigate, onLogout }) => {
         {/* Navigation */}
         <nav className="flex-1 px-4 py-2 space-y-1">
           {navItems.map((item) => {
-            const isActive = item.view === currentView;
+            const isActive = location.pathname === item.path;
             return (
               <button
                 key={item.label}
                 onClick={() => {
-                  if (item.view) {
-                    onNavigate(item.view);
-                    onClose();
-                  }
+                  navigate(item.path);
+                  onClose();
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
                   isActive 
@@ -74,17 +126,17 @@ const Sidebar = ({ isOpen, onClose, currentView, onNavigate, onLogout }) => {
         <div className="p-4 border-t border-gray-100 space-y-3">
           <button className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors group">
             <div className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden">
-               <img src={facultyIcon} alt="User profile" className="w-full h-full object-cover" />
+              <img src={avatarSrc} alt="User profile" className="w-full h-full object-cover" />
             </div>
             <div className="flex-1 text-left min-w-0">
-              <p className="text-sm font-semibold text-brand-black truncate">Admin User</p>
-              <p className="text-xs text-brand-grey truncate">admin@example.com</p>
+              <p className="text-sm font-semibold text-brand-black truncate">{displayName}</p>
+              <p className="text-xs text-brand-grey truncate">{displayEmail}</p>
             </div>
             <ChevronDown className="w-4 h-4 text-brand-grey group-hover:text-brand-black transition-colors" />
           </button>
           
           <button 
-            onClick={onLogout}
+            onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-2 rounded-xl text-red-600 hover:bg-red-50 transition-colors"
           >
             <LogOut className="w-5 h-5" />

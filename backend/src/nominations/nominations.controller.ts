@@ -12,13 +12,13 @@ import { UserRole } from '../users/entities/user.entity';
 export class NominationsController {
   constructor(private readonly nominationsService: NominationsService) {}
 
-  @Roles(UserRole.DEP_CHAIR)
+  @Roles(UserRole.DEP_CHAIR, UserRole.ADMIN, UserRole.DEAN)
   @Get('pending-approval')
   getPendingApproval() {
     return this.nominationsService.findPendingApprovalGrouped();
   }
 
-  @Roles(UserRole.DEP_CHAIR)
+  @Roles(UserRole.DEP_CHAIR, UserRole.ADMIN, UserRole.DEAN)
   @Patch('review')
   review(
     @Request() req,

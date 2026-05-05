@@ -1,5 +1,6 @@
 import { Controller, Post, Get, Body, UseGuards, Patch, Param, ParseIntPipe } from '@nestjs/common';
 import { EvaluationCyclesService } from './evaluation-cycles.service';
+import { NominationsService } from '../nominations/nominations.service';
 import { CreateEvaluationCycleDto } from './dto/create-evaluation-cycle.dto';
 import { UpdateEvaluationCycleDto } from './dto/update-evaluation-cycle.dto';
 import { AssignFacultyToCycleDto } from './dto/assign-faculty-to-cycle.dto';
@@ -12,7 +13,10 @@ import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 @Roles(UserRole.ADMIN) // ALL endpoints in this controller require ADMIN
 @Controller('evaluation-cycles')
 export class EvaluationCyclesController {
-  constructor(private readonly cyclesService: EvaluationCyclesService) {}
+  constructor(
+    private readonly cyclesService: EvaluationCyclesService,
+    private readonly nominationsService: NominationsService,
+  ) {}
 
   @Post()
   create(@Body() createDto: CreateEvaluationCycleDto) {
@@ -40,6 +44,7 @@ export class EvaluationCyclesController {
     return this.cyclesService.assignFaculty(id, dto);
   }
 
+  @Roles(UserRole.ADMIN, UserRole.FACULTY)
   @Get(':id/faculty')
   getAssignedFaculty(@Param('id', ParseIntPipe) id: number) {
     return this.cyclesService.getAssignedFaculty(id);
@@ -48,5 +53,27 @@ export class EvaluationCyclesController {
   @Post(':id/send-nomination-emails')
   sendNominationEmails(@Param('id', ParseIntPipe) id: number) {
     return this.cyclesService.sendNominationEmails(id);
+  }
+
+  @Post(':id/start-forms')
+  startForms(@Param('id', ParseIntPipe) id: number) {
+    return this.cyclesService.startForms(id);
+  }
+
+  @Post(':id/finalize-questions')
+  finalizeQuestions(@Param('id', ParseIntPipe) id: number) {
+    return this.cyclesService.finalizeQuestions(id);
+  }
+
+  @Roles(UserRole.ADMIN, UserRole.DEP_CHAIR, UserRole.DEAN)
+  @Get(':id/progress')
+  getProgress(@Param('id', ParseIntPipe) id: number) {
+    return this.cyclesService.getProgress(id);
+  }
+
+  @Roles(UserRole.ADMIN, UserRole.DEP_CHAIR, UserRole.DEAN)
+  @Post(':id/members/:userId/remind')
+  remindEvaluatee(@Param('id', ParseIntPipe) id: number, @Param('userId', ParseIntPipe) userId: number) {
+    return this.nominationsService.resendEvaluationEmailsForEvaluatee(id, userId);
   }
 }

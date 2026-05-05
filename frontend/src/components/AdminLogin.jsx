@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { api } from '../lib/api';
+import { api, parseJwt } from '../lib/api';
 import { useToast } from '../lib/ToastContext';
 
 const AdminLogin = ({ onLoginSuccess }) => {
@@ -22,12 +22,32 @@ const AdminLogin = ({ onLoginSuccess }) => {
       
       // Store token
       api.auth.setToken(response.access_token);
-      
+
+      const tokenPayload = parseJwt(response.access_token);
+      const userId = tokenPayload?.sub;
+      const tokenEmail = tokenPayload?.email;
+      const tokenRole = tokenPayload?.role;
+
+      let userProfile = {
+        user_id: userId,
+        email: tokenEmail || email,
+        role: tokenRole || 'admin',
+      };
+
+      if (userId) {
+        try {
+          const profile = await api.users.getById(userId);
+          userProfile = {
+            ...userProfile,
+            ...profile,
+          };
+        } catch (profileError) {
+          console.warn('Failed to load user profile:', profileError);
+        }
+      }
+
       // Store user info
-      api.auth.setUser({
-        email: email,
-        role: response.role || 'admin',
-      });
+      api.auth.setUser(userProfile);
 
       showToast('Login successful!', 'success');
       onLoginSuccess();

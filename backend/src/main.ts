@@ -12,6 +12,9 @@ async function bootstrap() {
   app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
   const corsOrigins = process.env.FRONTEND_URL;
+  if (!corsOrigins) {
+    throw new Error('FRONTEND_URL must be set for CORS configuration.');
+  }
 
   app.enableCors({
     origin: corsOrigins,

@@ -4,6 +4,9 @@ import { Repository, In } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { EvaluationCycle } from './entities/evaluation-cycle.entity';
 import { EvaluationCycleFaculty } from './entities/evaluation-cycle-faculty.entity';
+import { Nomination, NominationStatus } from '../nominations/entities/nomination.entity';
+import { Evaluation, EvaluationStatus } from '../evaluations/entities/evaluation.entity';
+import { EvaluationSummary } from '../evaluation-summaries/entities/evaluation-summary.entity';
 import { CreateEvaluationCycleDto } from './dto/create-evaluation-cycle.dto';
 import { UpdateEvaluationCycleDto } from './dto/update-evaluation-cycle.dto';
 import { AssignFacultyToCycleDto } from './dto/assign-faculty-to-cycle.dto';
@@ -21,6 +24,12 @@ export class EvaluationCyclesService {
     private readonly cycleRepo: Repository<EvaluationCycle>,
     @InjectRepository(EvaluationCycleFaculty)
     private readonly cycleFacultyRepo: Repository<EvaluationCycleFaculty>,
+    @InjectRepository(Nomination)
+    private readonly nominationRepo: Repository<Nomination>,
+    @InjectRepository(Evaluation)
+    private readonly evaluationRepo: Repository<Evaluation>,
+    @InjectRepository(EvaluationSummary)
+    private readonly summaryRepo: Repository<EvaluationSummary>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly emailService: EmailService,
@@ -49,6 +58,80 @@ export class EvaluationCyclesService {
     return this.cycleRepo.save(cycle);
   }
 
+  async getProgress(cycleId: number) {
+    const cycle = await this.cycleRepo.findOne({ where: { cycle_id: cycleId } });
+    if (!cycle) throw new NotFoundException(`Evaluation cycle #${cycleId} not found.`);
+
+    // Get assigned faculty
+    const assignments = await this.cycleFacultyRepo.find({ where: { cycle_id: cycleId }, relations: ['user'] });
+
+    // For each assigned faculty, compute nomination counts and evaluation completions
+    const results = await Promise.all(assignments.map(async (assignment) => {
+      const user = assignment.user;
+
+      const nominations = await this.nominationRepo.find({
+        where: { evaluatee_id: user.user_id, cycle_id: cycleId },
+        relations: ['evaluator'],
+      });
+
+      const nominationsSubmitted = nominations.length; // how many nominations submitted by the evaluatee
+
+      const approvedNominations = nominations.filter(n => n.status === NominationStatus.APPROVED);
+
+      // Count completed evaluations for this evaluatee in this cycle
+      const completedEvaluationsCount = await this.evaluationRepo.createQueryBuilder('evaluation')
+        .innerJoin('evaluation.nomination', 'nomination')
+        .where('nomination.evaluatee_id = :evaluateeId', { evaluateeId: user.user_id })
+        .andWhere('nomination.cycle_id = :cycleId', { cycleId })
+        .andWhere('evaluation.status = :completed', { completed: EvaluationStatus.COMPLETED })
+        .getCount();
+
+      // For each approved nomination, determine if its evaluation is completed
+      const approvedWithStatus = await Promise.all(approvedNominations.map(async (n) => {
+        const evaluation = await this.evaluationRepo.findOne({ where: { nomination_id: n.nomination_id } });
+        return {
+          nomination_id: n.nomination_id,
+          evaluator_id: n.evaluator_id,
+          evaluator_name: n.evaluator?.full_name,
+          evaluation_completed: evaluation ? evaluation.status === EvaluationStatus.COMPLETED : false,
+        };
+      }));
+
+      // Check if summary exists and if PDF is generated
+      const summary = await this.summaryRepo.findOne({
+        where: { evaluatee_id: user.user_id, cycle_id: cycleId },
+      });
+      const hasPdf = !!summary?.document_url;
+
+      return {
+        user_id: user.user_id,
+        full_name: user.full_name,
+        email: user.email,
+        image_base64: user.image ? user.image.toString('base64') : null,
+        nominations_submitted: nominationsSubmitted,
+        nominations_complete: nominationsSubmitted >= 5,
+        missing_nominations: Math.max(0, 5 - nominationsSubmitted),
+        nominations: nominations.map((nomination) => ({
+          nomination_id: nomination.nomination_id,
+          evaluator_id: nomination.evaluator_id,
+          evaluator_name: nomination.evaluator?.full_name,
+          evaluator_email: nomination.evaluator?.email,
+          status: nomination.status,
+        })),
+        approved_nominations: approvedWithStatus,
+        evaluations_completed_count: completedEvaluationsCount,
+        summary_id: summary?.summary_id || null,
+        has_pdf: hasPdf,
+      };
+    }));
+
+    return {
+      cycle_id: cycleId,
+      cycle_year: cycle.year,
+      members: results,
+    };
+  }
+
   async update(cycleId: number, updateDto: UpdateEvaluationCycleDto) {
     const cycle = await this.cycleRepo.findOne({ where: { cycle_id: cycleId } });
 
@@ -64,6 +147,10 @@ export class EvaluationCyclesService {
     }
 
     const updatedCycle = this.cycleRepo.merge(cycle, updateDto);
+
+    if (updateDto.is_active === false) {
+      updatedCycle.questions_locked = false;
+    }
     return this.cycleRepo.save(updatedCycle);
   }
 
@@ -121,19 +208,21 @@ export class EvaluationCyclesService {
       throw new NotFoundException(`Evaluation cycle #${cycleId} not found.`);
     }
 
-    return this.cycleFacultyRepo.find({
+    const assignments = await this.cycleFacultyRepo.find({
       where: { cycle_id: cycleId },
       relations: ['user'],
-      select: {
-        assignment_id: true,
-        user_id: true,
-        user: {
-          user_id: true,
-          full_name: true,
-          email: true,
-        },
-      },
     });
+
+    return assignments.map((assignment) => ({
+      assignment_id: assignment.assignment_id,
+      user_id: assignment.user_id,
+      user: {
+        user_id: assignment.user?.user_id,
+        full_name: assignment.user?.full_name,
+        email: assignment.user?.email,
+        image_base64: assignment.user?.image ? assignment.user.image.toString('base64') : null,
+      },
+    }));
   }
 
   async sendNominationEmails(cycleId: number) {
@@ -214,6 +303,76 @@ export class EvaluationCyclesService {
       sent_count: sentCount.success,
       failed_count: sentCount.failed,
       failed_faculty: failedFaculty.length > 0 ? failedFaculty : undefined,
+    };
+  }
+
+  async startForms(cycleId: number) {
+    const cycle = await this.cycleRepo.findOne({ where: { cycle_id: cycleId } });
+    if (!cycle) {
+      throw new NotFoundException(`Evaluation cycle #${cycleId} not found.`);
+    }
+
+    if (!cycle.is_active) {
+      throw new BadRequestException('Only active cycles can start forms.');
+    }
+
+    if (cycle.forms_started_at) {
+      return {
+        message: 'Forms have already been started for this cycle.',
+        cycle_id: cycleId,
+        forms_started_at: cycle.forms_started_at,
+      };
+    }
+
+    if (cycle.questions_locked) {
+      throw new BadRequestException('Questions are already finalized for this cycle.');
+    }
+
+    cycle.forms_started_at = new Date();
+    await this.cycleRepo.save(cycle);
+
+    return {
+      message: 'Forms started for this cycle.',
+      forms_started_at: cycle.forms_started_at,
+      cycle_id: cycleId,
+    };
+  }
+
+  async finalizeQuestions(cycleId: number) {
+    const cycle = await this.cycleRepo.findOne({ where: { cycle_id: cycleId } });
+    if (!cycle) {
+      throw new NotFoundException(`Evaluation cycle #${cycleId} not found.`);
+    }
+
+    if (!cycle.is_active) {
+      throw new BadRequestException('Only active cycles can finalize questions.');
+    }
+
+    if (cycle.questions_locked) {
+      return {
+        message: 'Questions are already finalized for this cycle.',
+        cycle_id: cycleId,
+        questions_locked: true,
+      };
+    }
+
+    if (!cycle.forms_started_at) {
+      cycle.forms_started_at = new Date();
+    }
+
+    cycle.questions_locked = true;
+    await this.cycleRepo.save(cycle);
+
+    const emailResult = await this.sendNominationEmails(cycleId);
+
+    return {
+      message: 'Questions finalized for this cycle. Nomination emails sent.',
+      cycle_id: cycleId,
+      questions_locked: true,
+      forms_started_at: cycle.forms_started_at,
+      sent_count: emailResult.sent_count,
+      failed_count: emailResult.failed_count,
+      failed_faculty: emailResult.failed_faculty,
     };
   }
 }

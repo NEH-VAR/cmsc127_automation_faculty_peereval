@@ -1,65 +1,185 @@
-import React, { useState } from 'react';
-import logo from '../assets/website logo.svg';
+import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import DynamicButton from './client/DynamicButton';
 import TeacherCard from './client/TeacherCard';
+import NominationSubmitted from './client/NominationSubmitted';
+import { api } from '../lib/api';
+import { useToast } from '../lib/ToastContext';
 
-const ClientNominate = ({name}) => {
+const ClientNominate = () => {
+    const [searchParams] = useSearchParams();
+    const { showToast } = useToast();
+    const [status, setStatus] = useState('loading');
+    const [error, setError] = useState('');
+    const [faculty, setFaculty] = useState([]);
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [evaluatee, setEvaluatee] = useState({ id: null, name: 'Faculty' });
+    const [submitting, setSubmitting] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
 
-    const TEACHERS = [
-        { id: 1, name: "Dr. Smith", dept: "Computer Science" },
-        { id: 2, name: "Prof. Jones", dept: "Information Technology" },
-        { id: 3, name: "Dr. Garcia", dept: "Computer Science" },
-        { id: 4, name: "Prof. Lee", dept: "Mathematics" },
-        { id: 5, name: "Dr. Wang", dept: "Engineering" },
-    ];    
-        return (
-            <div className="w-full px-4 xl:px-20 xl:flex xl:flex-col xl:items-center">
-                <div className="w-full xl:w-fit py-10 flex flex-col gap-15 items-center ">
-                    <div className="w-full flex flex-col gap-5 md:items-center">
-                        <h1 className="text-5xl leading-[1.2] lg:text-6xl font-normal text-brand-green mb-2 font-heading">Good Day {name}!</h1>
-                        <p className="text-sm leading-[1.2] text-[#222]">
-                            Please nominate five faculty members to conduct your evaluation.
-                        </p>
-                    </div>
+    const token = searchParams.get('token');
 
-                    <div className="grid grid-cols-12 xl:grid-cols-15  gap-x-4 md:gap-x-5 gap-y-8 md:gap-y-12 w-full ">
-                        {TEACHERS.map((teacher, index) => {
-                            let gridClasses = "col-span-6 md:col-span-4 xl:col-span-3";
+    useEffect(() => {
+        const loadNominationData = async () => {
+            if (!token) {
+                setError('Missing nomination token.');
+                setStatus('error');
+                return;
+            }
 
-                            if (TEACHERS.length % 2 !== 0 && index === TEACHERS.length - 1) {
-                                        gridClasses += " col-start-4";
-                                    };
+            try {
+                const auth = await api.magicLinks.validate(token);
+                if (auth.purpose !== 'NOMINATION') {
+                    throw new Error('This link is not for nominations.');
+                }
 
-                            if (index===3) {
-                                        gridClasses += " md:col-start-3"; 
-                            }
+                api.auth.setToken(auth.access_token);
 
-                            return (
-                                <div className={`${gridClasses} md:w-full flex flex-col items-center`}>
-                                    <TeacherCard 
-                                        key={teacher.id} 
-                                        teacherName={teacher.name}
-                                        teacherDept={teacher.dept}
-                                    />
-                                </div>
-                                );
-                            })}
-                    </div>
+                const userDetails = await api.users.getById(auth.user_id);
+                setEvaluatee({ id: auth.user_id, name: userDetails?.full_name || 'Faculty' });
 
-                    {TEACHERS.length <= 4 ? (
-                        <DynamicButton 
-                            content="Add Faculty" 
-                            className="bg-[#A43245] py-3 px-14 h-auto"
-                        />
-                    ) : (
-                        <DynamicButton 
-                            content="Submit Forms" 
-                            className="bg-[#A43245] py-3 px-14 h-auto"
-                        />
-                    )}
-                </div>
-            </div>   
-        );
+                const assignments = await api.evaluationCycles.getAssignedFaculty(auth.reference_id);
+                const list = Array.isArray(assignments)
+                    ? assignments
+                            .filter((item) => item.user_id !== auth.user_id)
+                            .map((item) => ({
+                                id: item.user_id,
+                                name: item.user?.full_name || 'Faculty',
+                                email: item.user?.email || '',
+                                image_base64: item.user?.image_base64 || null,
+                            }))
+                    : [];
+
+                setFaculty(list);
+                setStatus('ready');
+            } catch (err) {
+                setError(err.message || 'Unable to load nomination data.');
+                setStatus('error');
+            }
+        };
+
+        loadNominationData();
+    }, [token]);
+
+    const toggleSelection = (id) => {
+        if (selectedIds.includes(id)) {
+            setSelectedIds((prev) => prev.filter((item) => item !== id));
+            return;
+        }
+
+        if (selectedIds.length >= 5) {
+            showToast({
+                type: 'warning',
+                title: 'Maximum reached',
+                message: 'You can only nominate 5 faculty members.',
+                actionText: 'Dismiss',
+            });
+            return;
+        }
+
+        setSelectedIds((prev) => [...prev, id]);
     };
+
+    const handleSubmit = async () => {
+        if (selectedIds.length !== 5) {
+            showToast({
+                type: 'warning',
+                title: 'Select 5 faculty',
+                message: 'Please nominate exactly 5 faculty members.',
+                actionText: 'Dismiss',
+            });
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            await api.nominations.submit({ evaluator_ids: selectedIds });
+            setSubmitted(true);
+        } catch (err) {
+            showToast({
+                type: 'error',
+                title: 'Submission failed',
+                message: err.message || 'Please try again.',
+                actionText: 'Dismiss',
+            });
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    if (submitted) {
+        return (
+            <NominationSubmitted
+                title="Nomination submitted"
+                message="Thank you! Your nominations have been recorded. You may now close this page."
+            />
+        );
+    }
+
+    if (status === 'loading') {
+        return (
+            <div className="w-full px-4 xl:px-20 py-10 text-center">
+                Loading nomination form...
+            </div>
+        );
+    }
+
+    if (status === 'error') {
+        return (
+            <div className="w-full px-4 xl:px-20 py-10 text-center text-red-600">
+                {error}
+            </div>
+        );
+    }
+
+    return (
+        <div className="w-full px-4 xl:px-20 xl:flex xl:flex-col xl:items-center">
+            <div className="w-full xl:w-fit py-10 flex flex-col gap-15 items-center ">
+                <div className="w-full flex flex-col gap-5 md:items-center">
+                    <h1 className="text-5xl leading-[1.2] lg:text-6xl font-normal text-brand-green mb-2 font-heading">Good Day {evaluatee.name}!</h1>
+                    <p className="text-sm leading-[1.2] text-[#222]">
+                        Please nominate five faculty members to conduct your evaluation.
+                    </p>
+                    <p className="text-xs text-brand-grey">
+                        Selected {selectedIds.length} of 5
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-12 xl:grid-cols-15  gap-x-4 md:gap-x-5 gap-y-8 md:gap-y-12 w-full ">
+                    {faculty.map((teacher, index) => {
+                        let gridClasses = "col-span-6 md:col-span-4 xl:col-span-3";
+
+                        if (faculty.length % 2 !== 0 && index === faculty.length - 1) {
+                            gridClasses += " col-start-4";
+                        }
+
+                        if (index === 3) {
+                            gridClasses += " md:col-start-3"; 
+                        }
+
+                        return (
+                            <div key={teacher.id} className={`${gridClasses} md:w-full flex flex-col items-center`}>
+                                <TeacherCard
+                                    teacherName={teacher.name}
+                                    teacherDept={teacher.email}
+                                    imageSrc={teacher.image_base64 ? `data:image/*;base64,${teacher.image_base64}` : ''}
+                                    isSelected={selectedIds.includes(teacher.id)}
+                                    onClick={() => toggleSelection(teacher.id)}
+                                />
+                            </div>
+                        );
+                    })}
+                </div>
+
+                <DynamicButton
+                    content={submitting ? 'Submitting...' : 'Submit Forms'}
+                    onClick={handleSubmit}
+                    className="bg-[#A43245] py-3 px-14 h-auto"
+                    disabled={submitting}
+                />
+            </div>
+        </div>
+    );
+};
 
 export default ClientNominate;

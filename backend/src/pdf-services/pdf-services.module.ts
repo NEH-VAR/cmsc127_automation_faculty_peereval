@@ -7,5 +7,6 @@ import { EvaluationSummariesModule } from '../evaluation-summaries/evaluation-su
   imports: [EvaluationSummariesModule],
   controllers: [PdfServicesController],
   providers: [PdfServicesService],
+  exports: [PdfServicesService],
 })
 export class PdfServicesModule {}

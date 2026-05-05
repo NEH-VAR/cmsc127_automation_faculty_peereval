@@ -7,11 +7,15 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
+import { EvaluationSummariesService } from '../evaluation-summaries/evaluation-summaries.service';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('pdf-services')
 export class PdfServicesController {
-  constructor(private readonly pdfServicesService: PdfServicesService) {}
+  constructor(
+    private readonly pdfServicesService: PdfServicesService,
+    private readonly summariesService: EvaluationSummariesService,
+  ) {}
 
   @Post()
   create(@Body() createPdfServiceDto: CreatePdfServiceDto) {
@@ -41,7 +45,7 @@ export class PdfServicesController {
   @Roles(UserRole.FACULTY, UserRole.DEP_CHAIR, UserRole.DEAN, UserRole.ADMIN)
   @Get('evaluation-summary/:id/pdf')
   async getEvaluationSummaryPdf(@Param('id', ParseIntPipe) id: number, @Request() req, @Res() res: Response) {
-    const pdfBuffer = await this.pdfServicesService.generateEvaluationSummaryPdf(id, req.user.user_id, req.user.role);
+    const pdfBuffer = await this.summariesService.getStoredPdfDocument(id, req.user.user_id, req.user.role);
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': `inline; filename="evaluation-summary-${id}.pdf"`,

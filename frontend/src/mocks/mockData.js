@@ -54,7 +54,83 @@ export const mockData = (key) => {
                 }
             ],
         },
-
+        'client-forms': {
+            questions: [
+                {
+                    question_id: 1,
+                    question_text: 'The instructor clearly explains the course objectives.',
+                    type: 'LIKERT',
+                    is_required: true,
+                    section: {
+                        id: 1,
+                        name: 'Instructional Clarity',
+                        order: 1,
+                    },
+                },
+                {
+                    question_id: 2,
+                    question_text: 'The instructor demonstrates mastery of the subject matter.',
+                    type: 'LIKERT',
+                    is_required: true,
+                    section: {
+                        id: 1,
+                        name: 'Instructional Clarity',
+                        order: 1,
+                    },
+                },
+                {
+                    question_id: 3,
+                    question_text: 'The instructor encourages student participation.',
+                    type: 'LIKERT',
+                    is_required: true,
+                    section: {
+                        id: 2,
+                        name: 'Classroom Engagement',
+                        order: 2,
+                    },
+                },
+                {
+                    question_id: 4,
+                    question_text: 'The instructor is approachable and responsive.',
+                    type: 'LIKERT',
+                    is_required: false,
+                    section: {
+                        id: 2,
+                        name: 'Classroom Engagement',
+                        order: 2,
+                    },
+                },
+                {
+                    question_id: 5,
+                    question_text: 'What are the strengths of this instructor?',
+                    type: 'TEXT',
+                    is_required: false,
+                    section: {
+                        id: 3,
+                        name: 'Qualitative Feedback',
+                        order: 3,
+                    },
+                },
+                {
+                    question_id: 6,
+                    question_text: 'What areas can be improved?',
+                    type: 'TEXT',
+                    is_required: false,
+                    section: {
+                        id: 3,
+                        name: 'Qualitative Feedback',
+                        order: 3,
+                    },
+                },
+                {
+                    question_id: 7,
+                    question_text: 'Additional comments',
+                    type: 'TEXT',
+                    is_required: false,
+                    section: null, // triggers "Uncategorized"
+                },
+    ],
+}, 
     }
 
     if (!datasets[key]) {

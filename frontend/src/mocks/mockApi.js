@@ -34,4 +34,9 @@ export const mockApi = {
             return { success: true };
         },
     },
+    questions: {
+        findActive: async () => {
+            return getData().questions;
+        },
+    },
 };

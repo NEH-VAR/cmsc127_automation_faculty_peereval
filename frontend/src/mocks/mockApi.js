@@ -1,27 +1,34 @@
 import { mockData } from './mockData';
+import { getMockKeyFromRoute } from './mockRouteMap';
+
+const getData = () => {
+    const key = getMockKeyFromRoute();
+    return mockData(key);
+};
 
 export const mockApi = {
     magicLinks: {
         validate: async () => {
-            const data = mockData('client-nominate');
-            return data.auth;
+            return getData().auth;
         },
     },
+
     auth: {
-        setToken: () => {}, // no-op
+        setToken: () => {},
     },
+
     users: {
         getById: async () => {
-            const data = mockData('client-nominate');
-            return data.userDetails;
+            return getData().userDetails;
         },
     },
+
     evaluationCycles: {
         getAssignedFaculty: async () => {
-            const data = mockData('client-nominate');
-            return data.faculty;
+            return getData().faculty;
         },
     },
+
     nominations: {
         submit: async () => {
             return { success: true };

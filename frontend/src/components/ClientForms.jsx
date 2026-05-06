@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import Question from './client/Question';
 import DynamicButton from './client/DynamicButton';
 import NominationSubmitted from './client/NominationSubmitted';
-import { api } from '../lib/api';
+import { apiProvider as api } from '../lib/apiProvider';
 import { useToast } from '../lib/ToastContext';
+import { USE_MOCK } from '../lib/config';
 
 const ClientForms = ({ evaluationId, evaluateeName }) => {
     const { showToast } = useToast();
@@ -12,6 +13,9 @@ const ClientForms = ({ evaluationId, evaluateeName }) => {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
+
+    const effectiveEvaluationId = evaluationId || (USE_MOCK ? 999 : null);
+    const effectiveEvaluateeName = evaluateeName || (USE_MOCK ? 'Juan Dela Cruz' : '');  
 
     useEffect(() => {
         const fetchQuestions = async () => {
@@ -57,7 +61,7 @@ const ClientForms = ({ evaluationId, evaluateeName }) => {
             }
         };
 
-        if (evaluationId) {
+    if (effectiveEvaluationId) {
             fetchQuestions();
         }
     }, [evaluationId, showToast]);
@@ -103,7 +107,7 @@ const ClientForms = ({ evaluationId, evaluateeName }) => {
             });
 
             await api.answers.submit({
-                evaluation_id: parseInt(evaluationId),
+                evaluation_id: parseInt(effectiveEvaluationId),
                 answers: formattedAnswers
             });
             
@@ -129,7 +133,7 @@ const ClientForms = ({ evaluationId, evaluateeName }) => {
         );
     }
 
-    if (!evaluationId) {
+    if (!effectiveEvaluationId && !USE_MOCK) {
         return (
             <div className="w-full px-4 xl:px-20 py-10 text-center text-red-600">
                 Invalid evaluation access. Please use the link from your email.
@@ -150,7 +154,7 @@ const ClientForms = ({ evaluationId, evaluateeName }) => {
             <div className="w-full xl:w-[800px] py-10 flex flex-col gap-10">
                 <div className="w-full flex flex-col gap-5">
                     <h1 className="text-5xl leading-[1.2] lg:text-6xl font-normal text-brand-green mb-2 font-heading">
-                        Peer Evaluation for {evaluateeName}
+                        Peer Evaluation for {effectiveEvaluateeName}
                     </h1>
                     <p className="text-sm leading-[1.2] text-[#222]">
                         This document is the digitalized version of the MPI Form 2 or the Peer Evaluation Form for Faculty.

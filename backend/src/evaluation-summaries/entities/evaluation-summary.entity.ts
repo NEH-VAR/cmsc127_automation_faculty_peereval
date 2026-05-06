@@ -7,6 +7,10 @@ import {
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { EvaluationCycle } from '../../evaluation-cycles/entities/evaluation-cycle.entity';
+import {
+  EncryptedBufferTransformer,
+  EncryptedJsonTransformer,
+} from '../../crypto/transformers';
 
 @Entity('evaluation_summaries')
 export class EvaluationSummary {
@@ -36,10 +40,10 @@ export class EvaluationSummary {
   @Column({ type: 'boolean' })
   is_satisfactory: boolean;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'bytea', nullable: true, transformer: EncryptedJsonTransformer })
   section_statistics: unknown;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'bytea', nullable: true, transformer: EncryptedJsonTransformer })
   open_ended_comments: unknown;
 
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
@@ -56,6 +60,6 @@ export class EvaluationSummary {
   @Column({ type: 'int', nullable: true })
   dean_sign_id: number;
 
-  @Column({ type: 'bytea', nullable: true })
+  @Column({ type: 'bytea', nullable: true, transformer: EncryptedBufferTransformer })
   document_url: Buffer | null;
 } 

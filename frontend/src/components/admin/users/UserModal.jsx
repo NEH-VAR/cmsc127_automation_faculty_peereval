@@ -71,7 +71,6 @@ const UserModal = ({
               value={formData.full_name}
               onChange={(event) => setFormData((prev) => ({ ...prev, full_name: event.target.value }))}
               className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-brand-green"
-              placeholder="Juan Dela Cruz"
             />
           </div>
 
@@ -85,7 +84,6 @@ const UserModal = ({
               value={formData.email}
               onChange={(event) => setFormData((prev) => ({ ...prev, email: event.target.value }))}
               className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-brand-green"
-              placeholder="juan@school.edu"
             />
           </div>
 

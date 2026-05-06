@@ -6,6 +6,7 @@ import {
   JoinColumn 
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { EncryptedStringTransformer } from '../../crypto/transformers';
 
 export enum MagicLinkPurpose {
   NOMINATION = 'NOMINATION',
@@ -17,8 +18,11 @@ export class MagicLink {
   @PrimaryGeneratedColumn()
   token_id: number;
 
-  @Column({ type: 'varchar', unique: true })
+  @Column({ type: 'bytea', transformer: EncryptedStringTransformer })
   token_hash: string;
+
+  @Column({ type: 'varchar', unique: true })
+  token_lookup: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })

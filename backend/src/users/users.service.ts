@@ -6,6 +6,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
 import { College } from '../college/entities/college.entity';
+import { hashLookup } from '../crypto/crypto.util';
 
 @Injectable()
 export class UsersService {
@@ -43,13 +44,19 @@ export class UsersService {
   }
 
   async create(createDto: CreateUserDto) {
-    const existing = await this.userRepo.findOne({ where: { email: createDto.email } });
+    const normalizedEmail = createDto.email.trim().toLowerCase();
+    const existing = await this.userRepo.findOne({
+      where: { email_lookup: hashLookup(normalizedEmail) },
+    });
     if (existing) throw new ConflictException('Email already in use.');
 
     // Extract image before passing to create
-    const { image: imageBase64, college_id, ...createData } = createDto;
+    const { image: imageBase64, college_id, email: _rawEmail, ...createData } = createDto;
     const user = this.userRepo.create(createData as Partial<User>);
     const college = await this.resolveCollege(college_id);
+
+    user.email = normalizedEmail;
+    user.email_lookup = hashLookup(normalizedEmail);
 
     // Business Logic: Admins, Chairs, and Deans REQUIRE a password. Faculty DO NOT.
     if (user.role !== UserRole.FACULTY) {
@@ -82,13 +89,19 @@ export class UsersService {
 
   async update(id: number, updateDto: UpdateUserDto) {
     // Extract image before passing to preload
-    const { image: imageBase64, college_id, ...updateData } = updateDto;
+    const { image: imageBase64, college_id, email: rawEmail, ...updateData } = updateDto;
     const user = await this.userRepo.preload({
       user_id: id,
       ...updateData,
     } as any);
 
     if (!user) throw new NotFoundException(`User #${id} not found`);
+
+    if (rawEmail) {
+      const normalizedEmail = rawEmail.trim().toLowerCase();
+      user.email = normalizedEmail;
+      user.email_lookup = hashLookup(normalizedEmail);
+    }
 
     if (updateDto.password) {
       user.password_hash = await bcrypt.hash(updateDto.password, 10);
@@ -114,8 +127,9 @@ export class UsersService {
 
   // Used by AuthService for login
   async findOneByEmail(email: string): Promise<User | null> {
+    const normalizedEmail = email.trim().toLowerCase();
     return this.userRepo.findOne({
-      where: { email },
+      where: { email_lookup: hashLookup(normalizedEmail) },
       select: ['user_id', 'email', 'password_hash', 'role', 'full_name'], // Explicitly select password_hash
     });
   }

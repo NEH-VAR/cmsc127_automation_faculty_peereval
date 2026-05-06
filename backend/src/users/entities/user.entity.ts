@@ -1,5 +1,9 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { College } from '../../college/entities/college.entity';
+import {
+  EncryptedBufferTransformer,
+  EncryptedStringTransformer,
+} from '../../crypto/transformers';
 
 export enum UserRole {
   FACULTY = 'Faculty',
@@ -13,11 +17,14 @@ export class User {
   @PrimaryGeneratedColumn()
   user_id: number;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'bytea', transformer: EncryptedStringTransformer })
   full_name: string;
 
-  @Column({ type: 'varchar', unique: true })
+  @Column({ type: 'bytea', transformer: EncryptedStringTransformer })
   email: string;
+
+  @Column({ type: 'varchar', unique: true })
+  email_lookup: string;
 
   @Column({ type: 'varchar', nullable: true, select: false })
   password_hash: string;
@@ -29,7 +36,7 @@ export class User {
   })
   role: UserRole;
 
-  @Column({ type: 'bytea', nullable: true })
+  @Column({ type: 'bytea', nullable: true, transformer: EncryptedBufferTransformer })
   image: Buffer | null;
 
   @ManyToOne(() => College, (college) => college.users, {

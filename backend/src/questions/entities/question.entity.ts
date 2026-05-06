@@ -31,7 +31,7 @@ export class Question {
   section: QuestionSection;
 
   @Column({ type: 'int', nullable: true })
-  section_id: number;
+  section_id: number | null;
 
   @Column({ type: 'int', default: 0 })
   order_in_section: number;

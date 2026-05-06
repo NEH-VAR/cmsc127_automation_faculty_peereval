@@ -229,6 +229,21 @@ export const api = {
 
       return response.json();
     },
+    delete: async (questionId) => {
+      const response = await fetch(`${API_BASE_URL}/api/questions/${questionId}`, {
+        method: 'DELETE',
+        headers: {
+          ...getAuthHeaders(),
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to delete question');
+      }
+
+      return response.json().catch(() => ({}));
+    },
   },
   evaluationCycles: {
     create: async (payload) => {
@@ -414,6 +429,23 @@ export const api = {
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
         throw new Error(error.message || 'Failed to load question sections');
+      }
+
+      return response.json();
+    },
+    create: async (payload) => {
+      const response = await fetch(`${API_BASE_URL}/api/question-sections`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to create question section');
       }
 
       return response.json();

@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { MagicLink } from './entities/magic-link.entity';
 import { CreateMagicLinkDto } from './dto/create-magic-link.dto';
+import { hashLookup } from '../crypto/crypto.util';
 
 @Injectable()
 export class MagicLinksService {
@@ -24,6 +25,7 @@ export class MagicLinksService {
    */
   async createLink(createDto: CreateMagicLinkDto): Promise<MagicLink> {
     const tokenHash = crypto.randomBytes(32).toString('hex');
+    const tokenLookup = hashLookup(tokenHash);
 
     const expirationDays = this.configService.get<number>('MAGIC_LINK_EXPIRATION_DAYS', 31);
     const expiresAt = new Date();
@@ -32,6 +34,7 @@ export class MagicLinksService {
     const newLink = this.magicLinkRepo.create({
       ...createDto,
       token_hash: tokenHash,
+      token_lookup: tokenLookup,
       expires_at: expiresAt,
       is_used: false,
     });
@@ -47,9 +50,10 @@ export class MagicLinksService {
    * @returns The MagicLink entity if valid, otherwise null.
    */
   async validateLink(tokenHash: string): Promise<MagicLink | null> {
+    const tokenLookup = hashLookup(tokenHash);
     const link = await this.magicLinkRepo.findOne({
       where: {
-        token_hash: tokenHash,
+        token_lookup: tokenLookup,
         is_used: false,
         expires_at: MoreThan(new Date()), // Check that expiration is in the future
       },

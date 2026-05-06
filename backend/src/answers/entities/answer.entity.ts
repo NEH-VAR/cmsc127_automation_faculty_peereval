@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { Evaluation } from '../../evaluations/entities/evaluation.entity';
 import { Question } from '../../questions/entities/question.entity';
+import { EncryptedStringTransformer } from '../../crypto/transformers';
 
 @Entity('answers')
 @Unique(['evaluation_id', 'question_id'])
@@ -32,6 +33,6 @@ export class Answer {
   @Column({ type: 'decimal', precision: 3, scale: 2, nullable: true })
   numeric_score: number;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'bytea', nullable: true, transformer: EncryptedStringTransformer })
   text_response: string;
 }

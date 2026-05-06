@@ -3,8 +3,9 @@ import { useSearchParams } from 'react-router-dom';
 import DynamicButton from './client/DynamicButton';
 import TeacherCard from './client/TeacherCard';
 import NominationSubmitted from './client/NominationSubmitted';
-import { api } from '../lib/api';
+import { apiProvider as api } from '../lib/apiProvider';
 import { useToast } from '../lib/ToastContext';
+import { USE_MOCK } from '../lib/config';
 
 const ClientNominate = () => {
     const [searchParams] = useSearchParams();
@@ -17,11 +18,11 @@ const ClientNominate = () => {
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
 
-    const token = searchParams.get('token');
+    const token = searchParams.get('token') || (USE_MOCK ? 'mock-token' : null);
 
     useEffect(() => {
         const loadNominationData = async () => {
-            if (!token) {
+            if (!token && !USE_MOCK) {
                 setError('Missing nomination token.');
                 setStatus('error');
                 return;

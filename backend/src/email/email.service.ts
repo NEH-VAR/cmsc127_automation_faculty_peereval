@@ -1,51 +1,72 @@
+// src/email/email.service.ts
+
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import nodemailer, { SendMailOptions, Transporter } from 'nodemailer';
+import { Resend } from 'resend';
+
+// Create a local interface so we don't have to rewrite your controller payloads
+export interface SendMailOptions {
+  to: string | string[];
+  subject: string;
+  text?: string;
+  html?: string;
+}
 
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private readonly transporter: Transporter;
+  private readonly resend: Resend;
+  private readonly fromEmail: string;
 
   constructor(private readonly configService: ConfigService) {
-    const host = this.configService.get<string>('SMTP_HOST', 'smtp.gmail.com');
-    const port = this.configService.get<number>('SMTP_PORT', 587);
-    const secure = this.configService.get<boolean>('SMTP_SECURE', false);
-    const user = this.configService.get<string>('SMTP_USER');
-    const pass = this.configService.get<string>('SMTP_PASS');
-
-    this.transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure,
-      auth: user && pass ? { user, pass } : undefined,
-    });
-  }
-
-  async sendMail(options: SendMailOptions): Promise<void> {
-    const from =
-      this.configService.get<string>('SMTP_FROM') ||
-      this.configService.get<string>('SMTP_USER');
-
-    if (!from) {
-      this.logger.error('SMTP_FROM or SMTP_USER must be set to send email.');
-      throw new Error('Missing sender address for email.');
+    const apiKey = this.configService.get<string>('RESEND_API_KEY');
+    
+    if (!apiKey) {
+      this.logger.error('RESEND_API_KEY is not set in the environment variables.');
     }
 
-    const mailOptions: SendMailOptions = {
-      from,
-      ...options,
-    };
+    // Initialize Resend Client
+    this.resend = new Resend(apiKey);
+    
+    // Set the default sender
+    this.fromEmail = 
+      this.configService.get<string>('EMAIL_FROM') || 
+      'onboarding@resend.dev'; // Fallback for testing on unverified accounts
+  }
 
+async sendMail(options: SendMailOptions): Promise<void> {
     try {
-      const info = await this.transporter.sendMail(mailOptions);
-      this.logger.log(`Email sent: ${info.messageId}`);
+      // Dynamically build the payload to satisfy Resend's strict TypeScript unions
+      const payload: any = {
+        from: this.fromEmail,
+        to: Array.isArray(options.to) ? options.to : [options.to],
+        subject: options.subject,
+      };
+
+      // Add ONLY the property that actually exists
+      if (options.html) {
+        payload.html = options.html;
+      } else if (options.text) {
+        payload.text = options.text;
+      } else {
+        // Fallback in case both are accidentally omitted
+        payload.text = ' '; 
+      }
+
+      // Send via Resend
+      const { data, error } = await this.resend.emails.send(payload);
+
+      if (error) {
+        this.logger.error(`Resend API Error: ${error.message}`, JSON.stringify(error));
+        throw new Error(error.message);
+      }
+
+      this.logger.log(`Email sent successfully via Resend. ID: ${data?.id}`);
     } catch (error) {
       this.logger.error('Failed to send email', JSON.stringify(error));
       throw error;
     }
   }
-
   async sendReminderEmail(
     to: string,
     fullName: string,

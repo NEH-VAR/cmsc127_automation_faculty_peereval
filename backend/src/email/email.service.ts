@@ -18,18 +18,23 @@ export class EmailService {
 
   constructor(private readonly configService: ConfigService) {
     const apiKey = this.configService.get<string>('RESEND_API_KEY');
+    const fromEmail = this.configService.get<string>('EMAIL_FROM');
     
     if (!apiKey) {
       this.logger.error('RESEND_API_KEY is not set in the environment variables.');
+      throw new Error('RESEND_API_KEY is not set in the environment variables.');
+    }
+
+    if (!fromEmail) {
+      this.logger.error('EMAIL_FROM is not set in the environment variables.');
+      throw new Error('EMAIL_FROM is not set in the environment variables.');
     }
 
     // Initialize Resend Client
     this.resend = new Resend(apiKey);
     
     // Set the default sender
-    this.fromEmail = 
-      this.configService.get<string>('EMAIL_FROM') || 
-      'onboarding@resend.dev'; // Fallback for testing on unverified accounts
+    this.fromEmail = fromEmail;
   }
 
 async sendMail(options: SendMailOptions): Promise<void> {

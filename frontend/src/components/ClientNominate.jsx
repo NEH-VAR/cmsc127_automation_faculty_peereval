@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import DynamicButton from './client/DynamicButton';
 import TeacherCard from './client/TeacherCard';
+import RelationshipModal from './client/RelationshipModal';
 import NominationSubmitted from './client/NominationSubmitted';
 import { apiProvider as api } from '../lib/apiProvider';
 import { useToast } from '../lib/ToastContext';
@@ -14,9 +15,12 @@ const ClientNominate = () => {
     const [error, setError] = useState('');
     const [faculty, setFaculty] = useState([]);
     const [selectedIds, setSelectedIds] = useState([]);
+    const [relationships, setRelationships] = useState({}); // Store relationships by evaluator_id
     const [evaluatee, setEvaluatee] = useState({ id: null, name: 'Faculty' });
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [modalFaculty, setModalFaculty] = useState(null);
 
     const token = searchParams.get('token') || (USE_MOCK ? 'mock-token' : null);
 
@@ -65,6 +69,11 @@ const ClientNominate = () => {
     const toggleSelection = (id) => {
         if (selectedIds.includes(id)) {
             setSelectedIds((prev) => prev.filter((item) => item !== id));
+            setRelationships((prev) => {
+                const updated = { ...prev };
+                delete updated[id];
+                return updated;
+            });
             return;
         }
 
@@ -78,7 +87,29 @@ const ClientNominate = () => {
             return;
         }
 
-        setSelectedIds((prev) => [...prev, id]);
+        // Open modal to select relationship
+        const selectedFaculty = faculty.find((f) => f.id === id);
+        setModalFaculty({ ...selectedFaculty, evaluator_id: id });
+        setModalOpen(true);
+    };
+
+    const handleRelationshipConfirm = (relationshipData) => {
+        const evaluatorId = modalFaculty.evaluator_id;
+        
+        // Add to selected and store relationship
+        setSelectedIds((prev) => [...prev, evaluatorId]);
+        setRelationships((prev) => ({
+            ...prev,
+            [evaluatorId]: relationshipData,
+        }));
+        
+        setModalOpen(false);
+        setModalFaculty(null);
+    };
+
+    const handleRelationshipCancel = () => {
+        setModalOpen(false);
+        setModalFaculty(null);
     };
 
     const handleSubmit = async () => {
@@ -94,7 +125,13 @@ const ClientNominate = () => {
 
         setSubmitting(true);
         try {
-            await api.nominations.submit({ evaluator_ids: selectedIds });
+            // Build the relationships payload
+            const relationshipsPayload = selectedIds.map((evaluatorId) => ({
+                evaluator_id: evaluatorId,
+                ...relationships[evaluatorId],
+            }));
+
+            await api.nominations.submit({ relationships: relationshipsPayload });
             setSubmitted(true);
         } catch (err) {
             showToast({
@@ -135,6 +172,14 @@ const ClientNominate = () => {
 
     return (
         <div className="w-full px-4 xl:px-20 xl:flex xl:flex-col xl:items-center">
+            {modalOpen && (
+                <RelationshipModal
+                    faculty={modalFaculty}
+                    onConfirm={handleRelationshipConfirm}
+                    onCancel={handleRelationshipCancel}
+                />
+            )}
+            
             <div className="w-full xl:w-fit py-10 flex flex-col gap-15 items-center ">
                 <div className="w-full flex flex-col gap-5 md:items-center">
                     <h1 className="text-5xl leading-[1.2] lg:text-6xl font-normal text-brand-green mb-2 font-heading">Good Day {evaluatee.name}!</h1>

@@ -66,6 +66,19 @@ const EvaluatorSelection = () => {
   const getSelectedCount = (evaluateeId) => (selectedByEvaluatee[evaluateeId] || []).length;
   const isAllValid = groups.length > 0 && groups.every((group) => getSelectedCount(group.evaluatee_id) === 3);
 
+  const getRelationshipLabel = (nomination) => {
+    if (nomination?.relationship?.relationship_name) {
+      return nomination.relationship.relationship_name;
+    }
+
+    const otherText = nomination?.relationship_other_text?.trim();
+    if (otherText) {
+      return `Others: ${otherText}`;
+    }
+
+    return 'Relationship not provided';
+  };
+
   const handleConfirm = async () => {
     if (!isAllValid || isSubmitting) {
       return;
@@ -150,10 +163,11 @@ const EvaluatorSelection = () => {
                           : 'bg-white border-gray-200 text-brand-grey hover:border-gray-300'
                       }`}
                     >
-                      {(selectedByEvaluatee[group.evaluatee_id] || []).includes(nomination.nomination_id) && (
-                        <Check className="w-3.5 h-3.5" />
-                      )}
-                      {nomination.evaluator?.full_name || 'Faculty'}
+                      {(selectedByEvaluatee[group.evaluatee_id] || []).includes(nomination.nomination_id) && <Check className="w-3.5 h-3.5 mt-0.5" />}
+                      <span className="flex flex-col items-start leading-tight">
+                        <span>{nomination.evaluator?.full_name || 'Faculty'}</span>
+                        <span className="text-[11px] opacity-80">{getRelationshipLabel(nomination)}</span>
+                      </span>
                     </button>
                   ))}
                 </div>

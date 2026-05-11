@@ -13,6 +13,7 @@ import { AuthModule } from './auth/auth.module';
 import { CollegeModule } from './college/college.module';
 import { PdfServicesModule } from './pdf-services/pdf-services.module';
 import { EmailModule } from './email/email.module';
+import { RelationshipsModule } from './relationships/relationships.module';
 
 @Module({
   imports:[
@@ -63,6 +64,8 @@ import { EmailModule } from './email/email.module';
     PdfServicesModule,
 
     EmailModule,
+
+    RelationshipsModule,
   ],
 })
 export class AppModule {}

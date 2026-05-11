@@ -25,7 +25,8 @@ export class MagicLinksService {
   async createLink(createDto: CreateMagicLinkDto): Promise<MagicLink> {
     const tokenHash = crypto.randomBytes(32).toString('hex');
 
-    const expirationDays = this.configService.get<number>('MAGIC_LINK_EXPIRATION_DAYS', 31);
+    const expirationDaysRaw = this.configService.get('MAGIC_LINK_EXPIRATION_DAYS', 31);
+    const expirationDays = Number(expirationDaysRaw) || 31;
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + expirationDays);
     
@@ -122,7 +123,8 @@ export class MagicLinksService {
       throw new NotFoundException(`Magic link #${tokenId} not found`);
     }
 
-    const expirationDays = this.configService.get<number>('MAGIC_LINK_EXPIRATION_DAYS', 31);
+    const expirationDaysRaw = this.configService.get('MAGIC_LINK_EXPIRATION_DAYS', 31);
+    const expirationDays = Number(expirationDaysRaw) || 31;
     const newExpiresAt = new Date(link.expires_at);
     newExpiresAt.setDate(newExpiresAt.getDate() + expirationDays);
 

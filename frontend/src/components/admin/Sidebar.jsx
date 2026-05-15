@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Home, Bell, FileText, LayoutDashboard, Settings, ChevronDown, X, LogOut } from 'lucide-react';
+import { Home, Bell, FileText, LayoutDashboard, Settings, ChevronDown, X, LogOut, Award } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import logo from '../../assets/website logo.svg';
 import facultyIcon from '../../assets/faculty-icon.svg';
@@ -51,6 +51,7 @@ const Sidebar = ({ isOpen, onClose, onLogout }) => {
     { icon: FileText, label: 'Faculty Nominations', path: '/faculty-nominations' },
     { icon: FileText, label: 'Questions', path: '/questions' },
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
+    { icon: Award, label: 'Acknowledgments', path: '/acknowledgments' },
   ];
 
   const sidebarClasses = `

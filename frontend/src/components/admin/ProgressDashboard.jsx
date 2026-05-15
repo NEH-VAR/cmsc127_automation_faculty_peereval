@@ -45,7 +45,7 @@ const ProgressDashboard = () => {
           return;
         }
 
-        setCycleInfo({ cycle_id: active.cycle_id, year: active.year });
+        setCycleInfo({ cycle_id: active.cycle_id, year: active.year, semester: active.semester });
         const progress = await api.evaluationCycles.getProgress(active.cycle_id);
 
         // Map to table rows

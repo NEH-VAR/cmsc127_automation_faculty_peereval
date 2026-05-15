@@ -38,10 +38,15 @@ export class EvaluationCyclesService {
   ) {}
 
   async create(createDto: CreateEvaluationCycleDto) {
-    // Check if the year already exists to prevent duplicates
-    const existing = await this.cycleRepo.findOne({ where: { year: createDto.year } });
+    const semester = createDto.semester ?? 1;
+
+    if (createDto.start_date > createDto.end_date) {
+      throw new BadRequestException('End date must be on or after the start date.');
+    }
+
+    const existing = await this.cycleRepo.findOne({ where: { year: createDto.year, semester } });
     if (existing) {
-      throw new ConflictException(`Evaluation cycle for year ${createDto.year} already exists.`);
+      throw new ConflictException(`Evaluation cycle for year ${createDto.year}, semester ${semester} already exists.`);
     }
 
     const willBeActive = createDto.is_active ?? true;
@@ -54,7 +59,11 @@ export class EvaluationCyclesService {
       }
     }
 
-    const cycle = this.cycleRepo.create(createDto);
+    const cycle = this.cycleRepo.create({
+      ...createDto,
+      semester,
+    });
+
     return this.cycleRepo.save(cycle);
   }
 
@@ -62,10 +71,8 @@ export class EvaluationCyclesService {
     const cycle = await this.cycleRepo.findOne({ where: { cycle_id: cycleId } });
     if (!cycle) throw new NotFoundException(`Evaluation cycle #${cycleId} not found.`);
 
-    // Get assigned faculty
     const assignments = await this.cycleFacultyRepo.find({ where: { cycle_id: cycleId }, relations: ['user'] });
 
-    // For each assigned faculty, compute nomination counts and evaluation completions
     const results = await Promise.all(assignments.map(async (assignment) => {
       const user = assignment.user;
 
@@ -74,11 +81,9 @@ export class EvaluationCyclesService {
         relations: ['evaluator'],
       });
 
-      const nominationsSubmitted = nominations.length; // how many nominations submitted by the evaluatee
+      const nominationsSubmitted = nominations.length;
+      const approvedNominations = nominations.filter((n) => n.status === NominationStatus.APPROVED);
 
-      const approvedNominations = nominations.filter(n => n.status === NominationStatus.APPROVED);
-
-      // Count completed evaluations for this evaluatee in this cycle
       const completedEvaluationsCount = await this.evaluationRepo.createQueryBuilder('evaluation')
         .innerJoin('evaluation.nomination', 'nomination')
         .where('nomination.evaluatee_id = :evaluateeId', { evaluateeId: user.user_id })
@@ -86,7 +91,6 @@ export class EvaluationCyclesService {
         .andWhere('evaluation.status = :completed', { completed: EvaluationStatus.COMPLETED })
         .getCount();
 
-      // For each approved nomination, determine if its evaluation is completed
       const approvedWithStatus = await Promise.all(approvedNominations.map(async (n) => {
         const evaluation = await this.evaluationRepo.findOne({ where: { nomination_id: n.nomination_id } });
         return {
@@ -97,7 +101,6 @@ export class EvaluationCyclesService {
         };
       }));
 
-      // Check if summary exists and if PDF is generated
       const summary = await this.summaryRepo.findOne({
         where: { evaluatee_id: user.user_id, cycle_id: cycleId },
       });
@@ -128,6 +131,7 @@ export class EvaluationCyclesService {
     return {
       cycle_id: cycleId,
       cycle_year: cycle.year,
+      cycle_semester: cycle.semester,
       members: results,
     };
   }
@@ -139,11 +143,18 @@ export class EvaluationCyclesService {
       throw new NotFoundException(`Evaluation cycle #${cycleId} not found.`);
     }
 
-    if (updateDto.year && updateDto.year !== cycle.year) {
-      const existing = await this.cycleRepo.findOne({ where: { year: updateDto.year } });
-      if (existing && existing.cycle_id !== cycleId) {
-        throw new ConflictException(`Evaluation cycle for year ${updateDto.year} already exists.`);
-      }
+    const nextYear = updateDto.year ?? cycle.year;
+    const nextSemester = updateDto.semester ?? cycle.semester ?? 1;
+    const nextStartDate = updateDto.start_date ?? (cycle.start_date ? new Date(cycle.start_date).toISOString().slice(0, 10) : null);
+    const nextEndDate = updateDto.end_date ?? (cycle.end_date ? new Date(cycle.end_date).toISOString().slice(0, 10) : null);
+
+    if (nextStartDate && nextEndDate && nextStartDate > nextEndDate) {
+      throw new BadRequestException('End date must be on or after the start date.');
+    }
+
+    const existing = await this.cycleRepo.findOne({ where: { year: nextYear, semester: nextSemester } });
+    if (existing && existing.cycle_id !== cycleId) {
+      throw new ConflictException(`Evaluation cycle for year ${nextYear}, semester ${nextSemester} already exists.`);
     }
 
     const updatedCycle = this.cycleRepo.merge(cycle, updateDto);
@@ -151,21 +162,20 @@ export class EvaluationCyclesService {
     if (updateDto.is_active === false) {
       updatedCycle.questions_locked = false;
     }
+
     return this.cycleRepo.save(updatedCycle);
   }
 
   async findAll() {
-    return this.cycleRepo.find({ order: { year: 'DESC' } });
+    return this.cycleRepo.find({ order: { year: 'DESC', semester: 'DESC' } });
   }
 
   async assignFaculty(cycleId: number, dto: AssignFacultyToCycleDto) {
-    // 1. Verify cycle exists
     const cycle = await this.cycleRepo.findOne({ where: { cycle_id: cycleId } });
     if (!cycle) {
       throw new NotFoundException(`Evaluation cycle #${cycleId} not found.`);
     }
 
-    // 2. Verify all faculty IDs exist and are actually Faculty role
     const users = await this.userRepo.find({
       where: { user_id: In(dto.faculty_ids) },
     });
@@ -181,10 +191,8 @@ export class EvaluationCyclesService {
       );
     }
 
-    // 3. Remove existing assignments for this cycle
     await this.cycleFacultyRepo.delete({ cycle_id: cycleId });
 
-    // 4. Create new assignments
     const assignments = dto.faculty_ids.map((user_id) =>
       this.cycleFacultyRepo.create({
         cycle_id: cycleId,
@@ -202,7 +210,6 @@ export class EvaluationCyclesService {
   }
 
   async getAssignedFaculty(cycleId: number) {
-    // Verify cycle exists
     const cycle = await this.cycleRepo.findOne({ where: { cycle_id: cycleId } });
     if (!cycle) {
       throw new NotFoundException(`Evaluation cycle #${cycleId} not found.`);
@@ -226,13 +233,11 @@ export class EvaluationCyclesService {
   }
 
   async sendNominationEmails(cycleId: number) {
-    // 1. Verify cycle exists
     const cycle = await this.cycleRepo.findOne({ where: { cycle_id: cycleId } });
     if (!cycle) {
       throw new NotFoundException(`Evaluation cycle #${cycleId} not found.`);
     }
 
-    // 2. Get all assigned faculty
     const assignments = await this.cycleFacultyRepo.find({
       where: { cycle_id: cycleId },
       relations: ['user'],
@@ -250,27 +255,23 @@ export class EvaluationCyclesService {
     const sentCount = { success: 0, failed: 0 };
     const failedFaculty: Array<{ user_id: number; email: string; error: string }> = [];
 
-    // 3. For each faculty, create magic link and send email
     for (const assignment of assignments) {
       try {
         const user = assignment.user;
 
-        // Create magic link
         const magicLink = await this.magicLinksService.createLink({
           user_id: user.user_id,
           purpose: MagicLinkPurpose.NOMINATION,
           reference_id: cycle.cycle_id,
         });
 
-        // Build magic link URL
         const magicLinkUrl = `${frontendUrl}/nominate?token=${magicLink.token_hash}`;
 
-        // Send email
         await this.emailService.sendNominationMagicLinkEmail(
           user.email,
           user.full_name,
           magicLinkUrl,
-          `Year ${cycle.year}`,
+          `Year ${cycle.year}, Semester ${cycle.semester ?? 1}`,
         );
 
         sentCount.success++;
@@ -300,6 +301,7 @@ export class EvaluationCyclesService {
       message: 'Nomination emails sent.',
       cycle_id: cycleId,
       cycle_year: cycle.year,
+      cycle_semester: cycle.semester,
       sent_count: sentCount.success,
       failed_count: sentCount.failed,
       failed_faculty: failedFaculty.length > 0 ? failedFaculty : undefined,

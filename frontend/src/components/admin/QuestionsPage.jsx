@@ -75,6 +75,8 @@ const QuestionEditor = ({ question, sections, onChange }) => {
   );
 };
 
+const getSemesterLabel = (semester) => (Number(semester) === 2 ? '2nd Semester' : '1st Semester');
+
 const QuestionsPage = () => {
   const [sections, setSections] = useState([]);
   const [questions, setQuestions] = useState([]);
@@ -242,8 +244,8 @@ const QuestionsPage = () => {
       {activeCycle && (
         <div className={`mb-6 rounded-xl border px-4 py-3 text-sm ${isLocked ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>
           {isLocked
-            ? `Questions are locked for the ${activeCycle.year} cycle.`
-            : `Questions are editable for the ${activeCycle.year} cycle.`}
+            ? `Questions are locked for the ${activeCycle.year} - ${getSemesterLabel(activeCycle.semester)} cycle.`
+            : `Questions are editable for the ${activeCycle.year} - ${getSemesterLabel(activeCycle.semester)} cycle.`}
         </div>
       )}
 
@@ -252,7 +254,7 @@ const QuestionsPage = () => {
           <div>
             <div className="text-xs font-semibold uppercase tracking-wider text-brand-grey">Active Cycle</div>
             <div className="mt-1 text-base font-semibold text-brand-black">
-              {activeCycle ? activeCycle.year : 'None'}
+              {activeCycle ? `${activeCycle.year} - ${getSemesterLabel(activeCycle.semester)}` : 'None'}
             </div>
           </div>
           <div>

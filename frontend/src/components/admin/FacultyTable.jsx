@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '../ui/button';
-import ConfirmationPopup from '../ui/ConfirmationPopup';
 import { useToast } from '../../lib/ToastContext';
 import { api } from '../../lib/api';
 import UsersTable from './users/UsersTable';
@@ -17,7 +16,7 @@ const FacultyTable = ({ onComplete }) => {
   const [members, setMembers] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [collegeOptions, setCollegeOptions] = useState([]);
-  const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [isCycleModalOpen, setIsCycleModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -27,6 +26,7 @@ const FacultyTable = ({ onComplete }) => {
   const [loadError, setLoadError] = useState('');
   const [editingUserId, setEditingUserId] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
+  const [cycleForm, setCycleForm] = useState({ semester: '1', end_date: '' });
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
@@ -193,16 +193,23 @@ const FacultyTable = ({ onComplete }) => {
   const selectAll = () => setSelectedIds(members.filter((member) => member.role === 'Faculty').map((member) => member.id));
   const deselectAll = () => setSelectedIds([]);
 
+  const getSemesterLabel = (semester) => (Number(semester) === 2 ? '2nd Semester' : '1st Semester');
+
+  const getDefaultSemester = () => {
+    const month = new Date().getMonth() + 1;
+    return month >= 7 ? '2' : '1';
+  };
+
   const buildNewCyclePayload = () => {
     const now = new Date();
     const year = now.getFullYear();
     const startDate = now.toISOString().split('T')[0];
-    const endDate = new Date(year, 11, 31).toISOString().split('T')[0];
 
     return {
       year,
+      semester: Number(cycleForm.semester) || 1,
       start_date: startDate,
-      end_date: endDate,
+      end_date: cycleForm.end_date,
       is_active: true,
     };
   };
@@ -350,11 +357,35 @@ const FacultyTable = ({ onComplete }) => {
       });
       return;
     }
-    setIsPopupOpen(true);
+    setCycleForm({ semester: getDefaultSemester(), end_date: '' });
+    setIsCycleModalOpen(true);
   };
 
-  const handleConfirm = async () => {
-    setIsPopupOpen(false);
+  const handleConfirm = async (event) => {
+    event.preventDefault();
+
+    if (!cycleForm.end_date) {
+      showToast({
+        type: 'warning',
+        title: 'End date required',
+        message: 'Please choose the evaluation cycle end date.',
+        actionText: 'Okay',
+      });
+      return;
+    }
+
+    const startDate = new Date().toISOString().split('T')[0];
+    if (cycleForm.end_date < startDate) {
+      showToast({
+        type: 'warning',
+        title: 'Invalid end date',
+        message: 'The end date must be today or later.',
+        actionText: 'Okay',
+      });
+      return;
+    }
+
+    setIsCycleModalOpen(false);
     setIsStarting(true);
 
     try {
@@ -365,7 +396,7 @@ const FacultyTable = ({ onComplete }) => {
       showToast({
         type: 'success',
         title: 'Cycle created',
-        message: `Cycle ${cycle.year} created. Review and finalize questions next.`,
+        message: `Cycle ${cycle.year} - ${getSemesterLabel(cycle.semester ?? cyclePayload.semester)} created. Review and finalize questions next.`,
         actionText: 'Go to Questions',
       });
 
@@ -412,15 +443,70 @@ const FacultyTable = ({ onComplete }) => {
         </Button>
       </div>
 
-      <ConfirmationPopup 
-        isOpen={isPopupOpen} 
-        onClose={() => setIsPopupOpen(false)} 
-        onConfirm={handleConfirm}
-        title="Proceed to Forms?"
-        description="Make sure to double check that all desired faculty is selected."
-        confirmLabel="Review"
-        cancelLabel="Cancel"
-      />
+      {isCycleModalOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsCycleModalOpen(false)} />
+
+          <form onSubmit={handleConfirm} className="relative w-full max-w-[560px] rounded-[32px] border border-gray-100 bg-white p-8 shadow-2xl lg:p-10">
+            <button
+              type="button"
+              onClick={() => setIsCycleModalOpen(false)}
+              className="absolute right-6 top-6 text-brand-grey transition-colors hover:text-brand-black"
+            >
+              ×
+            </button>
+
+            <h2 className="mb-3 text-3xl font-normal text-brand-green font-heading">Set up evaluation cycle</h2>
+            <p className="mb-8 text-sm text-brand-grey">Select the semester and the date when this evaluation cycle should end.</p>
+
+            <div className="grid gap-5">
+              <div className="grid gap-2">
+                <label className="text-sm font-medium text-brand-black">Semester</label>
+                <select
+                  value={cycleForm.semester}
+                  onChange={(event) => setCycleForm((prev) => ({ ...prev, semester: event.target.value }))}
+                  className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-brand-green"
+                >
+                  <option value="1">1st Semester</option>
+                  <option value="2">2nd Semester</option>
+                </select>
+              </div>
+
+              <div className="grid gap-2">
+                <label className="text-sm font-medium text-brand-black">Cycle end date</label>
+                <input
+                  type="date"
+                  value={cycleForm.end_date}
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={(event) => setCycleForm((prev) => ({ ...prev, end_date: event.target.value }))}
+                  className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-brand-green"
+                />
+              </div>
+
+              <div className="rounded-2xl bg-brand-bg px-4 py-3 text-sm text-brand-black">
+                This will create the current year cycle for the selected semester and assign the faculty you selected.
+              </div>
+            </div>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => setIsCycleModalOpen(false)}
+                className="flex-1 rounded-[16px] border border-gray-200 px-8 py-3 text-base font-medium text-brand-grey transition-all hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isStarting}
+                className="flex-1 rounded-[16px] bg-brand-maroon px-8 py-3 text-base font-medium text-white transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isStarting ? 'Creating...' : 'Create Cycle'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       <UserModal
         isOpen={isAddModalOpen || isEditModalOpen}

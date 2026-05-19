@@ -444,10 +444,15 @@ const FacultyTable = ({ onComplete }) => {
       </div>
 
       {isCycleModalOpen && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsCycleModalOpen(false)} />
-
-          <form onSubmit={handleConfirm} className="relative w-full max-w-[560px] rounded-[32px] border border-gray-100 bg-white p-8 shadow-2xl lg:p-10">
+        <div 
+          className="fixed inset-0 z-[110] overflow-y-auto bg-black/40 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setIsCycleModalOpen(false)}
+        >
+          <form 
+            onSubmit={handleConfirm} 
+            className="relative w-full max-w-[560px] rounded-[32px] border-2 border-gray-200 bg-white p-8 shadow-2xl lg:p-10 my-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               type="button"
               onClick={() => setIsCycleModalOpen(false)}
@@ -492,14 +497,14 @@ const FacultyTable = ({ onComplete }) => {
               <button
                 type="button"
                 onClick={() => setIsCycleModalOpen(false)}
-                className="flex-1 rounded-[16px] border border-gray-200 px-8 py-3 text-base font-medium text-brand-grey transition-all hover:bg-gray-50"
+                className="flex-1 rounded-[16px] border-2 border-gray-300 px-8 py-3 text-base font-medium text-brand-grey transition-all hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isStarting}
-                className="flex-1 rounded-[16px] bg-brand-maroon px-8 py-3 text-base font-medium text-white transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex-1 rounded-[16px] border-2 border-transparent bg-brand-maroon px-8 py-3 text-base font-medium text-white transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isStarting ? 'Creating...' : 'Create Cycle'}
               </button>

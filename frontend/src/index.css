@@ -28,6 +28,7 @@
   --font-size-xs: 0.625rem;
 
   /* Brand Colors */
+  --color-brand-sidebar: #FFFFFF;
   --color-brand-bg: #FBFCFF;
   --color-brand-green: #00563F;
   --color-brand-black: #222222;
@@ -185,4 +186,8 @@
 
 .animate-shake {
   animation: shake 0.5s ease-in-out;
+}
+
+.bg-brand-sidebar {
+  background-color: var(--color-brand-sidebar, #FFFFFF) !important;
 }

@@ -69,7 +69,7 @@ const Sidebar = ({ isOpen, onClose, onLogout }) => {
   ];
 
   const sidebarClasses = `
-    fixed inset-y-0 left-0 z-50 w-72 bg-white border-r-2 border-gray-300 flex flex-col h-screen transition-transform duration-300 ease-in-out lg:translate-x-0 lg:sticky lg:top-0 lg:self-start lg:flex
+    fixed inset-y-0 left-0 z-50 w-72 bg-brand-sidebar border-r-2 border-gray-300 flex flex-col h-screen transition-transform duration-300 ease-in-out lg:translate-x-0 lg:sticky lg:top-0 lg:self-start lg:flex
     ${isOpen ? 'translate-x-0' : '-translate-x-full'}
   `;
 
@@ -99,7 +99,7 @@ const Sidebar = ({ isOpen, onClose, onLogout }) => {
 
       <aside className={sidebarClasses}>
         {/* Logo Section */}
-        <div className="p-8 flex flex-col items-center text-center relative">
+        <div className="p-8 flex flex-col items-center text-center relative border-b-2 border-gray-200 mb-4">
           <button
             onClick={onClose}
             className="absolute top-4 right-4 p-2 text-brand-grey lg:hidden"

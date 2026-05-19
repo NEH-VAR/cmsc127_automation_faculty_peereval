@@ -46,16 +46,17 @@ const UsersTable = ({
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border-2 border-gray-200 overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="border-b-2 border-gray-200">
-              <th className="px-6 py-5 text-sm font-semibold text-brand-black">Member</th>
-              <th className="hidden lg:table-cell px-6 py-5 text-sm font-semibold text-brand-black">Role</th>
-              <th className="hidden xl:table-cell px-6 py-5 text-sm font-semibold text-brand-black">College</th>
-              <th className="hidden lg:table-cell px-6 py-5 text-sm font-semibold text-brand-black">Email</th>
-              <th className="px-6 py-5 text-sm font-semibold text-brand-black text-right">Action</th>
-            </tr>
-          </thead>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[800px]">
+            <thead>
+              <tr className="border-b-2 border-gray-200">
+                <th className="px-6 py-5 text-sm font-semibold text-brand-black">Member</th>
+                <th className="px-6 py-5 text-sm font-semibold text-brand-black">Role</th>
+                <th className="px-6 py-5 text-sm font-semibold text-brand-black">College</th>
+                <th className="px-6 py-5 text-sm font-semibold text-brand-black">Email</th>
+                <th className="px-6 py-5 text-sm font-semibold text-brand-black text-center">Action</th>
+              </tr>
+            </thead>
           {isLoading ? (
             <tbody>
               <tr>
@@ -107,25 +108,25 @@ const UsersTable = ({
                         </div>
                       </div>
                     </td>
-                    <td className="hidden lg:table-cell px-6 py-6">
+                    <td className="px-6 py-6">
                       <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-brand-black">
                         {normalizeRoleLabel(member.role)}
                       </span>
                     </td>
-                    <td className="hidden xl:table-cell px-6 py-6">
+                    <td className="px-6 py-6">
                       <span className="text-sm text-brand-black font-medium">
                         {member.collegeName || 'No college assigned'}
                       </span>
                     </td>
-                    <td className="hidden lg:table-cell px-6 py-6">
+                    <td className="px-6 py-6">
                       <span className="text-sm text-brand-black font-medium">{member.email}</span>
                     </td>
-                    <td className="px-6 py-6 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="px-6 py-6 text-center">
+                      <div className="flex items-center justify-center gap-2">
                         {canSelect ? (
                           <button
                             onClick={() => onToggleSelect(member.id)}
-                            className={`w-6 h-6 rounded-md border flex items-center justify-center transition-all duration-200 ml-auto ${
+                            className={`w-6 h-6 rounded-md border flex items-center justify-center transition-all duration-200 ${
                               isSelected
                                 ? 'bg-brand-green border-brand-green'
                                 : 'border-gray-300 bg-white hover:border-gray-400'
@@ -153,7 +154,8 @@ const UsersTable = ({
               })}
             </tbody>
           )}
-        </table>
+          </table>
+        </div>
       </div>
     </div>
   );

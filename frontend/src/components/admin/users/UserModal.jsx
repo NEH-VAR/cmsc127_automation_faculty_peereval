@@ -21,8 +21,8 @@ const UserModal = ({
   const isSubmitting = isCreating || isSaving;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 px-4">
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border-2 border-gray-200">
+    <div className="fixed inset-0 z-[60] overflow-y-auto bg-black/30 flex items-center justify-center p-4">
+      <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl border-2 border-gray-200 my-auto">
         <div className="flex items-center justify-between border-b-2 border-gray-200 px-6 py-4">
           <div>
             <h2 className="text-xl font-semibold text-brand-black">{isEdit ? 'Edit User' : 'Add User'}</h2>
@@ -37,7 +37,7 @@ const UserModal = ({
           </button>
         </div>
 
-        <form onSubmit={onSubmit} className="space-y-4 px-6 py-6">
+        <form onSubmit={onSubmit} className="space-y-6 px-6 py-6">
           <div className="flex items-center gap-4 rounded-2xl border-2 border-dashed border-gray-300 p-4">
             <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-gray-50 border-2 border-gray-200">
               {imagePreview ? (
@@ -152,7 +152,7 @@ const UserModal = ({
             </div>
           )}
 
-          <div className="flex items-center justify-end gap-3 pt-2">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t-2 border-gray-200 mt-6">
             <button
               type="button"
               onClick={onClose}
@@ -160,13 +160,13 @@ const UserModal = ({
             >
               Cancel
             </button>
-            <Button
+            <button
               type="submit"
               disabled={isSubmitting}
-              className="rounded-xl bg-brand-maroon px-5 py-3 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+              className="rounded-xl border-2 border-transparent bg-brand-maroon px-5 py-3 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isEdit ? (isSaving ? 'Updating...' : 'Update User') : isCreating ? 'Saving...' : 'Create User'}
-            </Button>
+            </button>
           </div>
         </form>
       </div>

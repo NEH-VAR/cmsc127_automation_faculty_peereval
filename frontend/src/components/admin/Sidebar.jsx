@@ -7,6 +7,7 @@ import { api, parseJwt } from '../../lib/api';
 
 const Sidebar = ({ isOpen, onClose, onLogout }) => {
   const [user, setUser] = useState(() => api.auth.getUser());
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
 
   useEffect(() => {
     const storedUser = api.auth.getUser();
@@ -45,6 +46,19 @@ const Sidebar = ({ isOpen, onClose, onLogout }) => {
       isActive = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!isProfileDropdownOpen) return;
+    
+    const handleOutsideClick = () => {
+      setIsProfileDropdownOpen(false);
+    };
+    
+    document.addEventListener('click', handleOutsideClick);
+    return () => {
+      document.removeEventListener('click', handleOutsideClick);
+    };
+  }, [isProfileDropdownOpen]);
 
   const navItems = [
     { icon: Home, label: 'Home', path: '/dean-dashboard' },
@@ -124,8 +138,31 @@ const Sidebar = ({ isOpen, onClose, onLogout }) => {
         </nav>
 
         {/* User Profile */}
-        <div className="p-4 border-t border-gray-100 space-y-3">
-          <button className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors group">
+        <div className="p-4 border-t border-gray-100 relative">
+          {isProfileDropdownOpen && (
+            <div 
+              className="absolute bottom-full left-4 right-4 mb-2 bg-white rounded-2xl border border-gray-100 shadow-xl p-2 z-50 animate-in slide-in-from-bottom-2 fade-in duration-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button 
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-colors"
+              >
+                <LogOut className="w-5 h-5" />
+                <span className="text-sm font-semibold">Logout</span>
+              </button>
+            </div>
+          )}
+
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsProfileDropdownOpen(!isProfileDropdownOpen);
+            }}
+            className={`w-full flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors group ${
+              isProfileDropdownOpen ? 'bg-gray-50' : ''
+            }`}
+          >
             <div className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden">
               <img src={avatarSrc} alt="User profile" className="w-full h-full object-cover" />
             </div>
@@ -133,15 +170,9 @@ const Sidebar = ({ isOpen, onClose, onLogout }) => {
               <p className="text-sm font-semibold text-brand-black truncate">{displayName}</p>
               <p className="text-xs text-brand-grey truncate">{displayEmail}</p>
             </div>
-            <ChevronDown className="w-4 h-4 text-brand-grey group-hover:text-brand-black transition-colors" />
-          </button>
-          
-          <button 
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-2 rounded-xl text-red-600 hover:bg-red-50 transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            <span className="text-sm font-semibold">Logout</span>
+            <ChevronDown className={`w-4 h-4 text-brand-grey group-hover:text-brand-black transition-transform duration-200 ${
+              isProfileDropdownOpen ? 'rotate-180 text-brand-black' : ''
+            }`} />
           </button>
         </div>
       </aside>

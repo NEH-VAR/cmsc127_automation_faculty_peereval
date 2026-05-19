@@ -5,8 +5,15 @@ const ToastContext = createContext(null);
 export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
 
-  const showToast = useCallback(({ type = 'info', title, message, actionText, onAction }) => {
+  const showToast = useCallback((props, typeArg) => {
     const id = Math.random().toString(36).substr(2, 9);
+    let config = {};
+    if (typeof props === 'string') {
+      config = { message: props, type: typeArg || 'info' };
+    } else if (props) {
+      config = props;
+    }
+    const { type = 'info', title, message, actionText, onAction } = config;
     setToasts((prev) => [...prev, { id, type, title, message, actionText, onAction }]);
 
     // Auto dismiss after 5 seconds

@@ -142,7 +142,7 @@ const UsersTable = ({
                         <button
                           type="button"
                           onClick={() => onEditUser(member)}
-                          className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-brand-black opacity-0 transition-all duration-200 group-hover:opacity-100 hover:border-brand-green hover:text-brand-green"
+                          className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-brand-black opacity-100 lg:opacity-0 transition-all duration-200 lg:group-hover:opacity-100 hover:border-brand-green hover:text-brand-green"
                         >
                           <Edit3 className="h-3.5 w-3.5" />
                           Edit

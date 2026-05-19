@@ -22,8 +22,8 @@ const UserModal = ({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 px-4">
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-gray-100">
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+      <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border-2 border-gray-200">
+        <div className="flex items-center justify-between border-b-2 border-gray-200 px-6 py-4">
           <div>
             <h2 className="text-xl font-semibold text-brand-black">{isEdit ? 'Edit User' : 'Add User'}</h2>
             <p className="text-sm text-brand-grey">Create a faculty, admin, dean, or department chair account.</p>
@@ -38,8 +38,8 @@ const UserModal = ({
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4 px-6 py-6">
-          <div className="flex items-center gap-4 rounded-2xl border border-dashed border-gray-200 p-4">
-            <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-gray-50 border border-gray-100">
+          <div className="flex items-center gap-4 rounded-2xl border-2 border-dashed border-gray-300 p-4">
+            <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-gray-50 border-2 border-gray-200">
               {imagePreview ? (
                 <img src={imagePreview} alt="Profile preview" className="h-full w-full object-cover" />
               ) : (
@@ -70,7 +70,7 @@ const UserModal = ({
               type="text"
               value={formData.full_name}
               onChange={(event) => setFormData((prev) => ({ ...prev, full_name: event.target.value }))}
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-brand-green"
+              className="w-full rounded-xl border-2 border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-brand-green"
               placeholder="Juan Dela Cruz"
             />
           </div>
@@ -84,7 +84,7 @@ const UserModal = ({
               type="email"
               value={formData.email}
               onChange={(event) => setFormData((prev) => ({ ...prev, email: event.target.value }))}
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-brand-green"
+              className="w-full rounded-xl border-2 border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-brand-green"
               placeholder="juan@school.edu"
             />
           </div>
@@ -97,7 +97,7 @@ const UserModal = ({
               id="college_id"
               value={formData.college_id}
               onChange={(event) => setFormData((prev) => ({ ...prev, college_id: event.target.value }))}
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-brand-green"
+              className="w-full rounded-xl border-2 border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-brand-green"
             >
               <option value="">Select college</option>
               {collegeOptions.map((college) => (
@@ -122,7 +122,7 @@ const UserModal = ({
                   password: event.target.value === 'Faculty' ? '' : prev.password,
                 }))
               }
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-brand-green"
+              className="w-full rounded-xl border-2 border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-brand-green"
             >
               {roleOptions.map((role) => (
                 <option key={role.value} value={role.value}>
@@ -142,7 +142,7 @@ const UserModal = ({
                 type="password"
                 value={formData.password}
                 onChange={(event) => setFormData((prev) => ({ ...prev, password: event.target.value }))}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-brand-green"
+                className="w-full rounded-xl border-2 border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-brand-green"
                 placeholder={
                   isEdit
                     ? 'Leave blank to keep current password'
@@ -156,7 +156,7 @@ const UserModal = ({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-gray-200 px-5 py-3 text-sm font-medium text-brand-black hover:bg-gray-50"
+              className="rounded-xl border-2 border-gray-300 px-5 py-3 text-sm font-medium text-brand-black hover:bg-gray-50"
             >
               Cancel
             </button>

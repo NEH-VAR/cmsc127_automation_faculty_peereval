@@ -45,10 +45,10 @@ const UsersTable = ({
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm border-2 border-gray-200 overflow-hidden">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-gray-100">
+            <tr className="border-b-2 border-gray-200">
               <th className="px-6 py-5 text-sm font-semibold text-brand-black">Member</th>
               <th className="hidden lg:table-cell px-6 py-5 text-sm font-semibold text-brand-black">Role</th>
               <th className="hidden xl:table-cell px-6 py-5 text-sm font-semibold text-brand-black">College</th>
@@ -84,7 +84,7 @@ const UsersTable = ({
               </tr>
             </tbody>
           ) : (
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y-2 divide-gray-100">
               {members.map((member) => {
                 const canSelect = member.role === 'Faculty';
                 const isSelected = selectedIds.includes(member.id);
@@ -93,7 +93,7 @@ const UsersTable = ({
                   <tr key={member.id} className="hover:bg-gray-50/30 transition-colors group">
                     <td className="px-6 py-6">
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden border border-gray-100">
+                        <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden border-2 border-gray-200">
                           <img
                             src={member.avatarSrc || facultyIcon}
                             alt={member.name}

@@ -90,7 +90,7 @@ const Acknowledgments = () => {
     },
     {
       name: "Gracie Anne R. Abot",
-      role: "Lead UI/UX Designer driving intuitive interfaces and accessible experiences.",
+      role: "Project Manager",
       linkedin: "www.linkedin.com/in/gracieanneabot",
       github: "https://github.com/girlaliiing",
       email: "abotgracieanne2@gmail.com",

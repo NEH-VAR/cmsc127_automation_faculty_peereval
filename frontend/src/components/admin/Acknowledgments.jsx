@@ -90,7 +90,7 @@ const Acknowledgments = () => {
     },
     {
       name: "Gracie Anne R. Abot",
-      role: "Lead UI/UX Designer driving intuitive interfaces and accessible experiences.",
+      role: "Project Manager",
       linkedin: "www.linkedin.com/in/gracieanneabot",
       github: "https://github.com/girlaliiing",
       email: "abotgracieanne2@gmail.com",
@@ -149,7 +149,7 @@ const Acknowledgments = () => {
         <h2 className="text-2xl font-heading text-[#00563F] mb-3">
           The Implementation Team
         </h2>
-        <p className="text-[13px] font-sans text-[#222222] mb-10">
+        <p className="text-[13px] font-sans text-[#222222] mb-10 text-center">
           CMSC 127 | Transforming requirements into functional code.
         </p>
 
@@ -165,7 +165,7 @@ const Acknowledgments = () => {
         <h2 className="text-2xl font-heading text-[#00563F] mb-3">
           Strategic Leadership
         </h2>
-        <p className="text-[13px] font-sans text-[#222222] mb-10">
+        <p className="text-[13px] font-sans text-[#222222] mb-10 text-center">
           CMSC 183 | Driving the roadmap, scope, and technical vision.
         </p>
 

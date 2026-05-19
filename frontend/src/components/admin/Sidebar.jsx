@@ -49,11 +49,11 @@ const Sidebar = ({ isOpen, onClose, onLogout }) => {
 
   useEffect(() => {
     if (!isProfileDropdownOpen) return;
-    
+
     const handleOutsideClick = () => {
       setIsProfileDropdownOpen(false);
     };
-    
+
     document.addEventListener('click', handleOutsideClick);
     return () => {
       document.removeEventListener('click', handleOutsideClick);
@@ -69,7 +69,7 @@ const Sidebar = ({ isOpen, onClose, onLogout }) => {
   ];
 
   const sidebarClasses = `
-    fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-100 flex flex-col h-screen transition-transform duration-300 ease-in-out lg:translate-x-0 lg:sticky lg:top-0 lg:self-start lg:flex
+    fixed inset-y-0 left-0 z-50 w-72 bg-brand-sidebar border-r-2 border-gray-300 flex flex-col h-screen transition-transform duration-300 ease-in-out lg:translate-x-0 lg:sticky lg:top-0 lg:self-start lg:flex
     ${isOpen ? 'translate-x-0' : '-translate-x-full'}
   `;
 
@@ -91,7 +91,7 @@ const Sidebar = ({ isOpen, onClose, onLogout }) => {
     <>
       {/* Mobile Overlay */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden"
           onClick={onClose}
         />
@@ -99,16 +99,16 @@ const Sidebar = ({ isOpen, onClose, onLogout }) => {
 
       <aside className={sidebarClasses}>
         {/* Logo Section */}
-        <div className="p-8 flex flex-col items-center text-center relative">
-          <button 
+        <div className="p-8 flex flex-col items-center text-center relative border-b-2 border-gray-200 mb-4">
+          <button
             onClick={onClose}
             className="absolute top-4 right-4 p-2 text-brand-grey lg:hidden"
           >
             <X className="w-6 h-6" />
           </button>
-          <img 
-            src={logo} 
-            alt="Website Logo" 
+          <img
+            src={logo}
+            alt="Website Logo"
             className="w-full object-contain mb-2"
           />
         </div>
@@ -124,11 +124,10 @@ const Sidebar = ({ isOpen, onClose, onLogout }) => {
                   navigate(item.path);
                   onClose();
                 }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                  isActive 
-                    ? 'bg-[#E5E7EB] text-brand-black font-semibold' 
-                    : 'text-brand-grey hover:bg-gray-50 hover:text-brand-black'
-                }`}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive
+                  ? 'bg-[#E5E7EB] text-brand-black font-semibold'
+                  : 'text-brand-grey hover:bg-gray-50 hover:text-brand-black'
+                  }`}
               >
                 <item.icon className={`w-5 h-5 ${isActive ? 'text-brand-black' : 'text-brand-grey'}`} />
                 <span className="text-sm">{item.label}</span>
@@ -138,13 +137,13 @@ const Sidebar = ({ isOpen, onClose, onLogout }) => {
         </nav>
 
         {/* User Profile */}
-        <div className="p-4 border-t border-gray-100 relative">
+        <div className="p-4 border-t-2 border-gray-200 relative">
           {isProfileDropdownOpen && (
-            <div 
-              className="absolute bottom-full left-4 right-4 mb-2 bg-white rounded-2xl border border-gray-100 shadow-xl p-2 z-50 animate-in slide-in-from-bottom-2 fade-in duration-200"
+            <div
+              className="absolute bottom-full left-4 right-4 mb-2 bg-white rounded-2xl border-2 border-gray-200 shadow-xl p-2 z-50 animate-in slide-in-from-bottom-2 fade-in duration-200"
               onClick={(e) => e.stopPropagation()}
             >
-              <button 
+              <button
                 onClick={handleLogout}
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-colors"
               >
@@ -154,14 +153,13 @@ const Sidebar = ({ isOpen, onClose, onLogout }) => {
             </div>
           )}
 
-          <button 
+          <button
             onClick={(e) => {
               e.stopPropagation();
               setIsProfileDropdownOpen(!isProfileDropdownOpen);
             }}
-            className={`w-full flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors group ${
-              isProfileDropdownOpen ? 'bg-gray-50' : ''
-            }`}
+            className={`w-full flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors group ${isProfileDropdownOpen ? 'bg-gray-50' : ''
+              }`}
           >
             <div className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden">
               <img src={avatarSrc} alt="User profile" className="w-full h-full object-cover" />
@@ -170,9 +168,8 @@ const Sidebar = ({ isOpen, onClose, onLogout }) => {
               <p className="text-sm font-semibold text-brand-black truncate">{displayName}</p>
               <p className="text-xs text-brand-grey truncate">{displayEmail}</p>
             </div>
-            <ChevronDown className={`w-4 h-4 text-brand-grey group-hover:text-brand-black transition-transform duration-200 ${
-              isProfileDropdownOpen ? 'rotate-180 text-brand-black' : ''
-            }`} />
+            <ChevronDown className={`w-4 h-4 text-brand-grey group-hover:text-brand-black transition-transform duration-200 ${isProfileDropdownOpen ? 'rotate-180 text-brand-black' : ''
+              }`} />
           </button>
         </div>
       </aside>

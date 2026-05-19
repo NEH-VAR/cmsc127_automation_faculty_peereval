@@ -4,6 +4,7 @@ import FacultyTable from './FacultyTable';
 import EvaluatorSelection from './EvaluatorSelection';
 import ProgressDashboard from './ProgressDashboard';
 import QuestionsPage from './QuestionsPage';
+import Acknowledgments from './Acknowledgments';
 import { Menu } from 'lucide-react';
 import logo from '../../assets/website logo.svg';
 import { Navigate, useLocation } from 'react-router-dom';
@@ -23,6 +24,8 @@ const DeanDashboard = ({ onLogout }) => {
         return <QuestionsPage />;
       case '/dashboard':
         return <ProgressDashboard />;
+      case '/acknowledgments':
+        return <Acknowledgments />;
       default:
         return <Navigate to="/dean-dashboard" replace />;
     }

@@ -470,7 +470,7 @@ const FacultyTable = ({ onComplete }) => {
                 <select
                   value={cycleForm.semester}
                   onChange={(event) => setCycleForm((prev) => ({ ...prev, semester: event.target.value }))}
-                  className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-brand-green"
+                  className="rounded-xl border border-gray-200 pl-4 pr-10 py-3 text-sm outline-none transition focus:border-brand-green"
                 >
                   <option value="1">1st Semester</option>
                   <option value="2">2nd Semester</option>

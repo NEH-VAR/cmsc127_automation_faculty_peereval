@@ -1,7 +1,20 @@
 import * as crypto from 'crypto';
 
-const MASTER_KEY = requireKey('ENCRYPTION_MASTER_KEY');
-const LOOKUP_KEY = requireKey('ENCRYPTION_LOOKUP_KEY');
+let MASTER_KEY: Buffer | null = null;
+let LOOKUP_KEY: Buffer | null = null;
+
+function getMasterKey(): Buffer {
+  if (!MASTER_KEY) MASTER_KEY = requireKey('ENCRYPTION_MASTER_KEY');
+  return MASTER_KEY;
+}
+
+function getLookupKey(): Buffer {
+  if (!LOOKUP_KEY) LOOKUP_KEY = requireKey('ENCRYPTION_LOOKUP_KEY');
+  return LOOKUP_KEY;
+}
+const IV_LENGTH = 12;
+const TAG_LENGTH = 16;
+const MIN_BLOB_LENGTH = IV_LENGTH + TAG_LENGTH;
 
 function requireKey(envName: string): Buffer {
   const raw = process.env[envName];
@@ -18,18 +31,22 @@ function requireKey(envName: string): Buffer {
 }
 
 export function encryptBuffer(plain: Buffer): Buffer {
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', MASTER_KEY, iv);
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv('aes-256-gcm', getMasterKey(), iv);
   const ciphertext = Buffer.concat([cipher.update(plain), cipher.final()]);
   const tag = cipher.getAuthTag();
   return Buffer.concat([iv, tag, ciphertext]);
 }
 
 export function decryptBuffer(blob: Buffer): Buffer {
-  const iv = blob.subarray(0, 12);
-  const tag = blob.subarray(12, 28);
-  const ciphertext = blob.subarray(28);
-  const decipher = crypto.createDecipheriv('aes-256-gcm', MASTER_KEY, iv);
+  if (blob.length < MIN_BLOB_LENGTH) {
+    throw new Error('Encrypted payload is too short.');
+  }
+
+  const iv = blob.subarray(0, IV_LENGTH);
+  const tag = blob.subarray(IV_LENGTH, IV_LENGTH + TAG_LENGTH);
+  const ciphertext = blob.subarray(IV_LENGTH + TAG_LENGTH);
+  const decipher = crypto.createDecipheriv('aes-256-gcm', getMasterKey(), iv);
   decipher.setAuthTag(tag);
   return Buffer.concat([decipher.update(ciphertext), decipher.final()]);
 }
@@ -51,5 +68,5 @@ export function decryptJson(blob: Buffer): unknown {
 }
 
 export function hashLookup(value: string): string {
-  return crypto.createHmac('sha256', LOOKUP_KEY).update(value).digest('hex');
+  return crypto.createHmac('sha256', getLookupKey()).update(value).digest('hex');
 }

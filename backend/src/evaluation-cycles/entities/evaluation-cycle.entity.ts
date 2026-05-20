@@ -1,11 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, Unique } from 'typeorm';
 
+@Unique(['year', 'semester'])
 @Entity('evaluation_cycles')
 export class EvaluationCycle {
   @PrimaryGeneratedColumn()
   cycle_id: number;
 
-  @Column({ type: 'int', unique: true })
+  @Column({ type: 'int' })
   year: number;
 
   @Column({ type: 'date' })
@@ -25,4 +26,7 @@ export class EvaluationCycle {
 
   @Column({ type: 'int', default: 5 })
   max_evaluations_per_faculty: number;
+
+  @Column({ type: 'int', default: 1 })
+  semester: number;
 }

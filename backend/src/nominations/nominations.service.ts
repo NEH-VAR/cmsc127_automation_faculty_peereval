@@ -28,7 +28,7 @@ export class NominationsService {
   async findPendingApprovalGrouped() {
     const pending = await this.nomRepo.find({
       where: { status: NominationStatus.PENDING },
-      relations: ['evaluatee', 'evaluator', 'cycle'],
+      relations: ['evaluatee', 'evaluator', 'cycle', 'relationship'],
       order: {
         evaluatee_id: 'ASC',
         nomination_id: 'ASC',
@@ -55,14 +55,38 @@ export class NominationsService {
   }
 
   async submitNominations(evaluateeId: number, dto: SubmitNominationsDto, tokenId?: number) {
-    if (dto.evaluator_ids.includes(evaluateeId)) {
+    const evaluatorIds = dto.relationships.map((r) => r.evaluator_id);
+    
+    if (evaluatorIds.includes(evaluateeId)) {
       throw new BadRequestException("You cannot nominate yourself.");
     }
 
-    const uniqueEvaluatorIds = new Set(dto.evaluator_ids);
-    if (uniqueEvaluatorIds.size !== dto.evaluator_ids.length) {
+    const uniqueEvaluatorIds = new Set(evaluatorIds);
+    if (uniqueEvaluatorIds.size !== evaluatorIds.length) {
       throw new BadRequestException('Duplicate evaluator IDs are not allowed.');
     }
+
+    const allowedRelationshipIds = new Set([1, 2, 3]);
+    dto.relationships.forEach((item) => {
+      const hasRelationshipId = item.relationship_id !== undefined && item.relationship_id !== null;
+      const hasOtherText = typeof item.relationship_other_text === 'string' && item.relationship_other_text.trim().length > 0;
+
+      if (hasRelationshipId && hasOtherText) {
+        throw new BadRequestException(
+          'Provide either relationship_id (1-3) or relationship_other_text, not both.',
+        );
+      }
+
+      if (!hasRelationshipId && !hasOtherText) {
+        throw new BadRequestException(
+          'Each selected evaluator must have either relationship_id (1-3) or relationship_other_text.',
+        );
+      }
+
+      if (hasRelationshipId && !allowedRelationshipIds.has(item.relationship_id as number)) {
+        throw new BadRequestException('relationship_id must be one of 1, 2, or 3.');
+      }
+    });
 
     // 1. Find the active cycle
     const cycle = await this.dataSource.getRepository(EvaluationCycle).findOne({ where: { is_active: true } });
@@ -104,12 +128,15 @@ export class NominationsService {
       }
 
       // Create the Nomination entities
-      const nominations = dto.evaluator_ids.map(evaluator_id => {
+      const nominations = dto.relationships.map((rel) => {
+        const otherText = rel.relationship_other_text?.trim();
         return this.nomRepo.create({
           evaluatee_id: evaluateeId,
-          evaluator_id: evaluator_id,
+          evaluator_id: rel.evaluator_id,
           cycle_id: cycle.cycle_id,
           status: NominationStatus.PENDING,
+          relationship_id: rel.relationship_id ?? null,
+          relationship_other_text: otherText && !rel.relationship_id ? otherText : null,
         });
       });
 

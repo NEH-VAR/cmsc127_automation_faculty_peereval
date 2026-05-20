@@ -66,6 +66,19 @@ const EvaluatorSelection = () => {
   const getSelectedCount = (evaluateeId) => (selectedByEvaluatee[evaluateeId] || []).length;
   const isAllValid = groups.length > 0 && groups.every((group) => getSelectedCount(group.evaluatee_id) === 3);
 
+  const getRelationshipLabel = (nomination) => {
+    if (nomination?.relationship?.relationship_name) {
+      return nomination.relationship.relationship_name;
+    }
+
+    const otherText = nomination?.relationship_other_text?.trim();
+    if (otherText) {
+      return `Others: ${otherText}`;
+    }
+
+    return 'Relationship not provided';
+  };
+
   const handleConfirm = async () => {
     if (!isAllValid || isSubmitting) {
       return;
@@ -123,10 +136,10 @@ const EvaluatorSelection = () => {
         )}
 
         {groups.map((group) => (
-          <div key={group.evaluatee_id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-8">
+          <div key={group.evaluatee_id} className="bg-white rounded-2xl shadow-sm border-2 border-gray-200 p-6 lg:p-8">
             <div className="flex flex-col lg:flex-row lg:items-center gap-8">
               <div className="flex items-center gap-4 min-w-[250px]">
-                <div className="w-12 h-12 rounded-full overflow-hidden border border-gray-100 bg-gray-50 flex-shrink-0">
+                <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-gray-200 bg-gray-50 flex-shrink-0">
                   <img src={facultyIcon} alt={group.evaluatee_name} className="w-full h-full object-cover" />
                 </div>
                 <div>
@@ -144,16 +157,16 @@ const EvaluatorSelection = () => {
                       type="button"
                       onClick={() => toggleSelection(group.evaluatee_id, nomination.nomination_id)}
                       disabled={isSubmitting}
-                      className={`flex items-center gap-2 px-4 py-2.5 rounded-full border text-sm font-medium transition-all ${
-                        (selectedByEvaluatee[group.evaluatee_id] || []).includes(nomination.nomination_id)
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-full border-2 text-sm font-medium transition-all ${(selectedByEvaluatee[group.evaluatee_id] || []).includes(nomination.nomination_id)
                           ? 'bg-brand-green border-brand-green text-white shadow-md'
-                          : 'bg-white border-gray-200 text-brand-grey hover:border-gray-300'
-                      }`}
+                          : 'bg-white border-gray-300 text-brand-grey hover:border-gray-400'
+                        }`}
                     >
-                      {(selectedByEvaluatee[group.evaluatee_id] || []).includes(nomination.nomination_id) && (
-                        <Check className="w-3.5 h-3.5" />
-                      )}
-                      {nomination.evaluator?.full_name || 'Faculty'}
+                      {(selectedByEvaluatee[group.evaluatee_id] || []).includes(nomination.nomination_id) && <Check className="w-3.5 h-3.5 mt-0.5" />}
+                      <span className="flex flex-col items-start leading-tight">
+                        <span>{nomination.evaluator?.full_name || 'Faculty'}</span>
+                        <span className="text-[11px] opacity-80">{getRelationshipLabel(nomination)}</span>
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -174,9 +187,8 @@ const EvaluatorSelection = () => {
         <Button
           disabled={!isAllValid || isSubmitting}
           onClick={handleConfirm}
-          className={`w-full lg:w-auto px-12 py-3 h-auto rounded-[16px] text-lg font-medium transition-all shadow-[0_8px_20px_-4px_rgba(123,17,19,0.3)] ${
-            isAllValid && !isSubmitting ? 'bg-brand-maroon text-white hover:opacity-90' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-          }`}
+          className={`w-full lg:w-auto px-12 py-3 h-auto rounded-[16px] text-lg font-medium transition-all shadow-[0_8px_20px_-4px_rgba(123,17,19,0.3)] ${isAllValid && !isSubmitting ? 'bg-brand-maroon text-white hover:opacity-90' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+            }`}
         >
           {isSubmitting ? 'Sending Emails...' : 'Confirm Selection'}
         </Button>

@@ -1,9 +1,24 @@
-import { IsArray, ArrayMinSize, ArrayMaxSize, IsInt } from 'class-validator';
+import { IsArray, ArrayMinSize, ArrayMaxSize, IsInt, ValidateNested, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class RelationshipDataDto {
+  @IsInt()
+  evaluator_id: number;
+
+  @IsOptional()
+  @IsInt()
+  relationship_id?: number;
+
+  @IsOptional()
+  @IsString()
+  relationship_other_text?: string;
+}
 
 export class SubmitNominationsDto {
   @IsArray()
   @ArrayMinSize(5)
   @ArrayMaxSize(5)
-  @IsInt({ each: true }) // Ensures every item in the array is an integer
-  evaluator_ids: number[];
+  @ValidateNested({ each: true })
+  @Type(() => RelationshipDataDto)
+  relationships: RelationshipDataDto[];
 }

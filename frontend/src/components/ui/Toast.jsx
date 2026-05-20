@@ -16,7 +16,7 @@ const actionColors = {
   error: 'text-rose-500',
 };
 
-const Toast = ({ type = 'info', title, message, actionText = 'Action', onAction, onClose }) => {
+const Toast = ({ type = 'info', title, message, onAction, onClose }) => {
   return (
     <div className="flex bg-white rounded-lg shadow-lg border border-slate-100 overflow-hidden min-w-[320px] max-w-[400px]">
       <div className="flex-1 flex items-start gap-3 p-4">
@@ -33,18 +33,12 @@ const Toast = ({ type = 'info', title, message, actionText = 'Action', onAction,
         </div>
       </div>
       
-      <div className="flex flex-col border-l border-slate-100 w-[80px]">
+      <div className="flex border-l border-slate-100 w-[80px]">
         <button
-          onClick={onAction}
-          className={cn(
-            "flex-1 px-3 text-xs font-medium hover:bg-slate-50 transition-colors border-b border-slate-100",
-            actionColors[type]
-          )}
-        >
-          {actionText}
-        </button>
-        <button
-          onClick={onClose}
+          onClick={() => {
+            if (onAction) onAction();
+            if (onClose) onClose();
+          }}
           className="flex-1 px-3 text-xs font-medium text-slate-500 hover:bg-slate-50 transition-colors"
         >
           Close

@@ -45,17 +45,18 @@ const UsersTable = ({
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="border-b border-gray-100">
-              <th className="px-6 py-5 text-sm font-semibold text-brand-black">Member</th>
-              <th className="hidden lg:table-cell px-6 py-5 text-sm font-semibold text-brand-black">Role</th>
-              <th className="hidden xl:table-cell px-6 py-5 text-sm font-semibold text-brand-black">College</th>
-              <th className="hidden lg:table-cell px-6 py-5 text-sm font-semibold text-brand-black">Email</th>
-              <th className="px-6 py-5 text-sm font-semibold text-brand-black text-right">Action</th>
-            </tr>
-          </thead>
+      <div className="bg-white rounded-2xl shadow-sm border-2 border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[800px]">
+            <thead>
+              <tr className="border-b-2 border-gray-200">
+                <th className="px-6 py-5 text-sm font-semibold text-brand-black">Member</th>
+                <th className="px-6 py-5 text-sm font-semibold text-brand-black">Role</th>
+                <th className="px-6 py-5 text-sm font-semibold text-brand-black">College</th>
+                <th className="px-6 py-5 text-sm font-semibold text-brand-black">Email</th>
+                <th className="px-6 py-5 text-sm font-semibold text-brand-black text-center">Action</th>
+              </tr>
+            </thead>
           {isLoading ? (
             <tbody>
               <tr>
@@ -84,7 +85,7 @@ const UsersTable = ({
               </tr>
             </tbody>
           ) : (
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y-2 divide-gray-100">
               {members.map((member) => {
                 const canSelect = member.role === 'Faculty';
                 const isSelected = selectedIds.includes(member.id);
@@ -93,7 +94,7 @@ const UsersTable = ({
                   <tr key={member.id} className="hover:bg-gray-50/30 transition-colors group">
                     <td className="px-6 py-6">
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden border border-gray-100">
+                        <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden border-2 border-gray-200">
                           <img
                             src={member.avatarSrc || facultyIcon}
                             alt={member.name}
@@ -107,25 +108,25 @@ const UsersTable = ({
                         </div>
                       </div>
                     </td>
-                    <td className="hidden lg:table-cell px-6 py-6">
+                    <td className="px-6 py-6">
                       <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-brand-black">
                         {normalizeRoleLabel(member.role)}
                       </span>
                     </td>
-                    <td className="hidden xl:table-cell px-6 py-6">
+                    <td className="px-6 py-6">
                       <span className="text-sm text-brand-black font-medium">
                         {member.collegeName || 'No college assigned'}
                       </span>
                     </td>
-                    <td className="hidden lg:table-cell px-6 py-6">
+                    <td className="px-6 py-6">
                       <span className="text-sm text-brand-black font-medium">{member.email}</span>
                     </td>
-                    <td className="px-6 py-6 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="px-6 py-6 text-center">
+                      <div className="flex items-center justify-center gap-2">
                         {canSelect ? (
                           <button
                             onClick={() => onToggleSelect(member.id)}
-                            className={`w-6 h-6 rounded-md border flex items-center justify-center transition-all duration-200 ml-auto ${
+                            className={`w-6 h-6 rounded-md border flex items-center justify-center transition-all duration-200 ${
                               isSelected
                                 ? 'bg-brand-green border-brand-green'
                                 : 'border-gray-300 bg-white hover:border-gray-400'
@@ -141,7 +142,7 @@ const UsersTable = ({
                         <button
                           type="button"
                           onClick={() => onEditUser(member)}
-                          className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-brand-black opacity-0 transition-all duration-200 group-hover:opacity-100 hover:border-brand-green hover:text-brand-green"
+                          className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-brand-black opacity-100 lg:opacity-0 transition-all duration-200 lg:group-hover:opacity-100 hover:border-brand-green hover:text-brand-green"
                         >
                           <Edit3 className="h-3.5 w-3.5" />
                           Edit
@@ -153,7 +154,8 @@ const UsersTable = ({
               })}
             </tbody>
           )}
-        </table>
+          </table>
+        </div>
       </div>
     </div>
   );

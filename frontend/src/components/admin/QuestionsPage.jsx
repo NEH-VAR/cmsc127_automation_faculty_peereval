@@ -165,6 +165,8 @@ const QuestionEditor = ({
   );
 };
 
+const getSemesterLabel = (semester) => (Number(semester) === 2 ? '2nd Semester' : '1st Semester');
+
 const QuestionsPage = () => {
   const [sections, setSections] = useState([]);
   const [questions, setQuestions] = useState([]);
@@ -621,7 +623,7 @@ const QuestionsPage = () => {
           <Button
             onClick={() => openEditor(null)}
             disabled={isLocked}
-            className="bg-brand-maroon text-white"
+            className="inline-flex items-center gap-2 bg-brand-maroon hover:opacity-90 text-white px-5 py-2.5 h-auto rounded-[14px] text-sm font-medium transition-all shadow-[0_8px_20px_-4px_rgba(123,17,19,0.22)]"
           >
             Add Question
           </Button>
@@ -631,8 +633,8 @@ const QuestionsPage = () => {
       {activeCycle && (
         <div className={`mb-6 rounded-xl border px-4 py-3 text-sm ${isLocked ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>
           {isLocked
-            ? `Questions are locked for the ${activeCycle.year} cycle.`
-            : `Questions are editable for the ${activeCycle.year} cycle.`}
+            ? `Questions are locked for the ${activeCycle.year} - ${getSemesterLabel(activeCycle.semester)} cycle.`
+            : `Questions are editable for the ${activeCycle.year} - ${getSemesterLabel(activeCycle.semester)} cycle.`}
         </div>
       )}
 
@@ -641,7 +643,7 @@ const QuestionsPage = () => {
           <div>
             <div className="text-xs font-semibold uppercase tracking-wider text-brand-grey">Active Cycle</div>
             <div className="mt-1 text-base font-semibold text-brand-black">
-              {activeCycle ? activeCycle.year : 'None'}
+              {activeCycle ? `${activeCycle.year} - ${getSemesterLabel(activeCycle.semester)}` : 'None'}
             </div>
           </div>
           <div>
@@ -671,6 +673,7 @@ const QuestionsPage = () => {
                   <Button
                     onClick={() => openEditor({ section_id: sec.id, question_text: '', type: 'LIKERT', is_required: true, is_active: true, order_in_section: getNextQuestionOrder(sec.id) })}
                     disabled={isLocked}
+                    className="inline-flex items-center gap-2 border border-gray-200 bg-white px-4 py-2 h-auto rounded-xl text-xs font-semibold text-brand-black hover:bg-gray-50 transition-all cursor-pointer"
                   >
                     Add in section
                   </Button>
@@ -722,7 +725,7 @@ const QuestionsPage = () => {
                         <Button
                           onClick={(e) => { e.stopPropagation(); openEditor(q); }}
                           disabled={isLocked}
-                          className="bg-white border opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 h-auto text-xs font-semibold text-brand-black opacity-0 transition-all duration-200 group-hover:opacity-100 hover:border-brand-green hover:text-brand-green"
                         >
                           Edit
                         </Button>
@@ -742,8 +745,8 @@ const QuestionsPage = () => {
       </div>
 
       {isEditingModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
-          <div className="w-full max-w-xl rounded-2xl bg-white shadow-2xl border border-gray-100 p-6">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/30 flex items-center justify-center p-4">
+          <div className="relative w-full max-w-xl rounded-2xl bg-white shadow-2xl border-2 border-gray-200 p-6 my-auto">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold">{editing?.question_id ? 'Edit Question' : 'Add Question'}</h2>
               <button onClick={() => { setIsEditingModalOpen(false); setEditing(null); }} className="text-brand-grey">Close</button>
@@ -765,22 +768,19 @@ const QuestionsPage = () => {
               isCreateSectionDisabled={isCreateSectionDisabled}
             />
 
-            <div className="mt-6 flex items-center justify-between gap-3">
-              {editing?.question_id ? (
-                <Button
-                  onClick={handleDelete}
-                  disabled={isDeleting || isLocked}
-                  className="hover:bg-red-500"
-                >
-                  {isDeleting ? 'Deleting...' : 'Delete'}
-                </Button>
-              ) : (
-                <div />
-              )}
-              <div className="flex items-center gap-3">
-                <Button onClick={() => { setIsEditingModalOpen(false); setEditing(null); }} className="border">Cancel</Button>
-                <Button onClick={handleSave} className="bg-brand-maroon text-white">Save</Button>
-              </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => { setIsEditingModalOpen(false); setEditing(null); }}
+                className="rounded-xl border-2 border-gray-300 px-5 py-3 text-sm font-medium text-brand-black bg-white hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                className="rounded-xl border-2 border-transparent bg-brand-maroon px-5 py-3 text-sm font-medium text-white hover:opacity-90 transition-all"
+              >
+                Save
+              </button>
             </div>
           </div>
         </div>

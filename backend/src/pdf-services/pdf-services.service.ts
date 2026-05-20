@@ -109,14 +109,16 @@ export class PdfServicesService {
                 <td>{{average_score}} ± {{standard_deviation}}</td>
               </tr>
               {{#each questions}}
-                <tr class="question-row">
-                  <td>{{question_text}}</td>
-                  {{#each peer_scores}}
-                    <td>{{#if (isDefined this)}}{{this}}{{else}}—{{/if}}</td>
-                  {{/each}}
-                  <td>{{average_score}}</td>
-                  <td></td>
-                </tr>
+                {{#if (eq question_type 'LIKERT')}}
+                  <tr class="question-row">
+                    <td>{{question_text}}</td>
+                    {{#each peer_scores}}
+                      <td>{{#if (isDefined this)}}{{this}}{{else}}—{{/if}}</td>
+                    {{/each}}
+                    <td>{{average_score}}</td>
+                    <td></td>
+                  </tr>
+                {{/if}}
               {{/each}}
               <tr class="section-summary">
                 <td><strong>Section Summary</strong></td>

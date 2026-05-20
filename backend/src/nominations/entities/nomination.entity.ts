@@ -7,6 +7,7 @@ import {
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { EvaluationCycle } from '../../evaluation-cycles/entities/evaluation-cycle.entity';
+import { Relationship } from '../../relationships/entities/relationship.entity';
 
 export enum NominationStatus {
   PENDING = 'PENDING',
@@ -53,4 +54,14 @@ export class Nomination {
 
   @Column({ type: 'int', nullable: true })
   approved_by: number;
+
+  @ManyToOne(() => Relationship, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'relationship_id' })
+  relationship: Relationship;
+
+  @Column({ type: 'int', nullable: true })
+  relationship_id: number | null;
+
+  @Column({ type: 'text', nullable: true })
+  relationship_other_text: string | null;
 }

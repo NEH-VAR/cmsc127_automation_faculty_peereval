@@ -3,53 +3,8 @@ import { Button } from '../ui/button';
 import { api } from '../../lib/api';
 import { useToast } from '../../lib/ToastContext';
 
-const NEW_SECTION_VALUE = '__new_section__';
-
-const sortByOrder = (items) => [...items].sort((a, b) => (a.order_in_section ?? 0) - (b.order_in_section ?? 0));
-
-const rebuildSectionsWithQuestions = (baseSections, questionList) => {
-  const sectionRows = baseSections.map((section) => ({
-    ...section,
-    questions: [],
-  }));
-
-  const uncategorized = { id: null, name: 'Uncategorized', order: 9999, questions: [] };
-
-  questionList.forEach((question) => {
-    const sectionId = question.section_id ?? null;
-    const section = sectionRows.find((row) => row.id === sectionId);
-    if (section) {
-      section.questions.push(question);
-    } else {
-      uncategorized.questions.push(question);
-    }
-  });
-
-  sectionRows.forEach((section) => {
-    section.questions = sortByOrder(section.questions);
-  });
-  uncategorized.questions = sortByOrder(uncategorized.questions);
-
-  return [...sectionRows.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)), uncategorized];
-};
-
-const QuestionEditor = ({
-  question,
-  sections,
-  onChange,
-  getNextQuestionOrder,
-  isCreatingSection,
-  newSectionName,
-  newSectionOrder,
-  onNewSectionNameChange,
-  onNewSectionOrderChange,
-  onStartCreateSection,
-  onCancelCreateSection,
-  onCreateSection,
-  isCreateSectionDisabled,
-}) => {
+const QuestionEditor = ({ question, sections, onChange }) => {
   if (!question) return null;
-  const selectValue = isCreatingSection ? NEW_SECTION_VALUE : question.section_id ?? '';
   return (
     <div className="space-y-3">
       <div>
@@ -96,60 +51,15 @@ const QuestionEditor = ({
       <div>
         <label className="block text-sm font-medium text-brand-black">Section</label>
         <select
-          value={selectValue}
-          onChange={(e) => {
-            if (e.target.value === NEW_SECTION_VALUE) {
-              onStartCreateSection();
-              return;
-            }
-            onCancelCreateSection();
-            const nextSectionId = e.target.value ? Number(e.target.value) : null;
-            const shouldRecompute = !question.question_id || (question.section_id ?? null) !== nextSectionId;
-            const nextOrder = shouldRecompute
-              ? getNextQuestionOrder(nextSectionId)
-              : question.order_in_section ?? 0;
-            onChange({
-              ...question,
-              section_id: nextSectionId,
-              order_in_section: nextOrder,
-            });
-          }}
+          value={question.section_id ?? ''}
+          onChange={(e) => onChange({ ...question, section_id: e.target.value ? Number(e.target.value) : null })}
           className="w-full rounded-xl border border-gray-200 px-4 py-2"
         >
           <option value="">(none)</option>
           {sections.map((s) => (
             <option key={s.id} value={s.id}>{s.name}</option>
           ))}
-          <option value={NEW_SECTION_VALUE}>+ Add new section...</option>
         </select>
-        {isCreatingSection && (
-          <div className="mt-3 space-y-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
-            <div>
-              <label className="block text-xs font-semibold text-brand-grey">New section name</label>
-              <input
-                value={newSectionName}
-                onChange={(e) => onNewSectionNameChange(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-2 bg-white"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-brand-grey">Order</label>
-              <input
-                type="number"
-                min="1"
-                value={newSectionOrder}
-                onChange={(e) => onNewSectionOrderChange(Number(e.target.value))}
-                className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-2 bg-white"
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button onClick={onCancelCreateSection} className="border">Cancel</Button>
-              <Button onClick={onCreateSection} disabled={isCreateSectionDisabled} className="bg-brand-maroon text-white">
-                Create Section
-              </Button>
-            </div>
-          </div>
-        )}
       </div>
 
       <div>
@@ -175,14 +85,6 @@ const QuestionsPage = () => {
   const [isEditingModalOpen, setIsEditingModalOpen] = useState(false);
   const [activeCycle, setActiveCycle] = useState(null);
   const [isFinalizing, setIsFinalizing] = useState(false);
-  const [isCreatingSection, setIsCreatingSection] = useState(false);
-  const [newSectionName, setNewSectionName] = useState('');
-  const [newSectionOrder, setNewSectionOrder] = useState(1);
-  const [isCreatingSectionBusy, setIsCreatingSectionBusy] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [draggedQuestionId, setDraggedQuestionId] = useState(null);
-  const [dropTargetSectionId, setDropTargetSectionId] = useState(null);
-  const [isReordering, setIsReordering] = useState(false);
   const { showToast } = useToast();
 
   const isLocked = !!activeCycle?.questions_locked;
@@ -208,24 +110,30 @@ const QuestionsPage = () => {
         api.evaluationCycles.listAll(),
       ]);
 
-      // normalize section metadata
+      // sections from backend include questions relation; normalize to expected shape
       const secs = Array.isArray(secsResp)
-        ? secsResp.map((s) => ({
-          id: s.id,
-          name: s.name,
-          order: s.order ?? 0,
-        }))
+        ? secsResp.map((s) => ({ id: s.id, name: s.name, questions: Array.isArray(s.questions) ? s.questions : [] }))
         : [];
 
       // questions list (flat)
-      const qs = Array.isArray(questionsResp)
-        ? questionsResp.map((q) => ({
-          ...q,
-          section_id: q.section_id ?? q.section?.id ?? null,
-        }))
-        : [];
+      const qs = Array.isArray(questionsResp) ? questionsResp : [];
 
-      setSections(rebuildSectionsWithQuestions(secs, qs));
+      // Ensure that any question not assigned to a section goes into an "Uncategorized" pseudo-section
+      const uncategorized = { id: null, name: 'Uncategorized', questions: [] };
+      qs.forEach((q) => {
+        const secId = q.section_id ?? null;
+        const sec = secs.find((s) => (s.id ?? null) === secId);
+        if (sec) {
+          sec.questions.push(q);
+        } else {
+          uncategorized.questions.push(q);
+        }
+      });
+
+      const finalSections = [...secs];
+      if (uncategorized.questions.length > 0) finalSections.push(uncategorized);
+
+      setSections(finalSections.sort((a, b) => (a.id === null ? 9999 : a.order ?? 0) - (b.id === null ? 9999 : b.order ?? 0)));
       setQuestions(qs);
       const active = Array.isArray(cyclesResp)
         ? cyclesResp.find((cycle) => cycle.is_active)
@@ -242,21 +150,6 @@ const QuestionsPage = () => {
     load();
   }, []);
 
-  const getNextSectionOrder = () => {
-    const orders = sections
-      .filter((section) => section?.id !== null)
-      .map((section) => section.order ?? 0);
-    return orders.length > 0 ? Math.max(...orders) + 1 : 1;
-  };
-
-  const getNextQuestionOrder = (sectionId) => {
-    const targetId = sectionId ?? null;
-    const orders = questions
-      .filter((q) => (q.section_id ?? q.section?.id ?? null) === targetId)
-      .map((q) => (Number.isFinite(q.order_in_section) ? q.order_in_section : 0));
-    return orders.length > 0 ? Math.max(...orders) + 1 : 0;
-  };
-
   const openEditor = (question = null) => {
     if (isLocked) {
       showToast({
@@ -267,87 +160,8 @@ const QuestionsPage = () => {
       });
       return;
     }
-    const draft = question
-      ? { ...question }
-      : { question_text: '', type: 'LIKERT', is_required: true, is_active: true, section_id: null, order_in_section: 0 };
-    if (!draft.question_id) {
-      draft.order_in_section = getNextQuestionOrder(draft.section_id ?? null);
-    }
-    setEditing(draft);
+    setEditing(question || { question_text: '', type: 'LIKERT', is_required: true, is_active: true, section_id: null, order_in_section: 0 });
     setIsEditingModalOpen(true);
-    setIsCreatingSection(false);
-    setNewSectionName('');
-    setNewSectionOrder(getNextSectionOrder());
-  };
-
-  const startCreateSection = () => {
-    if (isLocked) {
-      showToast({
-        type: 'warning',
-        title: 'Questions locked',
-        message: 'Questions are finalized for the active cycle.',
-        actionText: 'Dismiss',
-      });
-      return;
-    }
-    setIsCreatingSection(true);
-    setNewSectionName('');
-    setNewSectionOrder(getNextSectionOrder());
-  };
-
-  const cancelCreateSection = () => {
-    setIsCreatingSection(false);
-    setNewSectionName('');
-  };
-
-  const handleCreateSection = async () => {
-    if (isLocked) {
-      showToast({
-        type: 'warning',
-        title: 'Questions locked',
-        message: 'Questions are finalized for the active cycle.',
-        actionText: 'Dismiss',
-      });
-      return;
-    }
-
-    const name = newSectionName.trim();
-    if (!name) {
-      showToast({ type: 'error', title: 'Missing name', message: 'Enter a section name.' });
-      return;
-    }
-
-    setIsCreatingSectionBusy(true);
-    try {
-      const created = await api.questionSections.create({
-        name,
-        order: Number(newSectionOrder) || 1,
-      });
-
-      setSections((prev) => {
-        const baseSections = prev
-          .filter((section) => section.id !== null && section.id !== created.id)
-          .map((section) => ({
-            id: section.id,
-            name: section.name,
-            order: section.order,
-          }));
-        const next = rebuildSectionsWithQuestions([
-          ...baseSections,
-          { id: created.id, name: created.name, order: created.order, questions: [] },
-        ], questions);
-        return next;
-      });
-
-      setEditing((prev) => (prev ? { ...prev, section_id: created.id } : prev));
-      setIsCreatingSection(false);
-      setNewSectionName('');
-      showToast({ type: 'success', title: 'Section created', message: 'Section added to the list.' });
-    } catch (err) {
-      showToast({ type: 'error', title: 'Create failed', message: err.message || 'Try again' });
-    } finally {
-      setIsCreatingSectionBusy(false);
-    }
   };
 
   const handleSave = async () => {
@@ -373,35 +187,6 @@ const QuestionsPage = () => {
       await load();
     } catch (err) {
       showToast({ type: 'error', title: 'Save failed', message: err.message || 'Try again' });
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!editing?.question_id) return;
-    if (isLocked) {
-      showToast({
-        type: 'warning',
-        title: 'Questions locked',
-        message: 'Questions are finalized for the active cycle.',
-        actionText: 'Dismiss',
-      });
-      return;
-    }
-
-    const confirmed = window.confirm('Delete this question? This cannot be undone.');
-    if (!confirmed) return;
-
-    setIsDeleting(true);
-    try {
-      await api.questions.delete(editing.question_id);
-      showToast({ type: 'success', title: 'Deleted', message: 'Question deleted.' });
-      setIsEditingModalOpen(false);
-      setEditing(null);
-      await load();
-    } catch (err) {
-      showToast({ type: 'error', title: 'Delete failed', message: err.message || 'Try again' });
-    } finally {
-      setIsDeleting(false);
     }
   };
 
@@ -437,180 +222,6 @@ const QuestionsPage = () => {
       setIsFinalizing(false);
     }
   };
-
-  const handleDragStart = (questionId) => {
-    if (isLocked || isReordering) return;
-    setDraggedQuestionId(questionId);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedQuestionId(null);
-    setDropTargetSectionId(null);
-  };
-
-  const handleDropOnSection = async (targetSectionId) => {
-    if (isLocked || isReordering || !draggedQuestionId) {
-      return;
-    }
-
-    const movedQuestion = questions.find((question) => question.question_id === draggedQuestionId);
-    if (!movedQuestion) {
-      handleDragEnd();
-      return;
-    }
-
-    const sourceSectionId = movedQuestion.section_id ?? null;
-    const normalizedTargetSectionId = targetSectionId ?? null;
-
-    const sourceQuestions = sortByOrder(
-      questions.filter(
-        (question) => (question.section_id ?? null) === sourceSectionId && question.question_id !== movedQuestion.question_id,
-      ),
-    );
-    const targetQuestions = sortByOrder(
-      questions.filter(
-        (question) => (question.section_id ?? null) === normalizedTargetSectionId && question.question_id !== movedQuestion.question_id,
-      ),
-    );
-
-    const movedToTarget = {
-      ...movedQuestion,
-      section_id: normalizedTargetSectionId,
-    };
-    const nextTargetQuestions = [...targetQuestions, movedToTarget];
-
-    const reassignedSource = sourceSectionId === normalizedTargetSectionId
-      ? []
-      : sourceQuestions.map((question, index) => ({
-        ...question,
-        order_in_section: index,
-      }));
-    const reassignedTarget = nextTargetQuestions.map((question, index) => ({
-      ...question,
-      order_in_section: index,
-    }));
-
-    const updatedMap = new Map();
-    reassignedSource.forEach((question) => updatedMap.set(question.question_id, question));
-    reassignedTarget.forEach((question) => updatedMap.set(question.question_id, question));
-
-    const nextQuestions = questions.map((question) => updatedMap.get(question.question_id) || question);
-    const changedQuestions = nextQuestions.filter((question) => {
-      const prev = questions.find((item) => item.question_id === question.question_id);
-      if (!prev) return false;
-      return (prev.section_id ?? null) !== (question.section_id ?? null)
-        || (prev.order_in_section ?? 0) !== (question.order_in_section ?? 0);
-    });
-
-    setQuestions(nextQuestions);
-    const baseSections = sections
-      .filter((section) => section.id !== null)
-      .map((section) => ({ id: section.id, name: section.name, order: section.order }));
-    setSections(rebuildSectionsWithQuestions(baseSections, nextQuestions));
-    setIsReordering(true);
-
-    try {
-      for (const question of changedQuestions) {
-        await api.questions.update(question.question_id, {
-          section_id: question.section_id,
-          order_in_section: question.order_in_section,
-        });
-      }
-      showToast({ type: 'success', title: 'Reordered', message: 'Question order updated.' });
-    } catch (err) {
-      showToast({ type: 'error', title: 'Reorder failed', message: err.message || 'Try again' });
-      await load();
-    } finally {
-      setIsReordering(false);
-      handleDragEnd();
-    }
-  };
-
-  const handleDropOnQuestion = async (targetQuestionId, targetSectionId) => {
-    if (isLocked || isReordering || !draggedQuestionId || draggedQuestionId === targetQuestionId) {
-      return;
-    }
-
-    const movedQuestion = questions.find((question) => question.question_id === draggedQuestionId);
-    const targetQuestion = questions.find((question) => question.question_id === targetQuestionId);
-    if (!movedQuestion || !targetQuestion) {
-      handleDragEnd();
-      return;
-    }
-
-    const sourceSectionId = movedQuestion.section_id ?? null;
-    const normalizedTargetSectionId = targetSectionId ?? null;
-
-    const sourceQuestions = sortByOrder(
-      questions.filter(
-        (question) => (question.section_id ?? null) === sourceSectionId && question.question_id !== movedQuestion.question_id,
-      ),
-    );
-
-    const targetQuestions = sortByOrder(
-      questions.filter(
-        (question) => (question.section_id ?? null) === normalizedTargetSectionId && question.question_id !== movedQuestion.question_id,
-      ),
-    );
-
-    const insertIndex = targetQuestions.findIndex((question) => question.question_id === targetQuestionId);
-    const movedToTarget = {
-      ...movedQuestion,
-      section_id: normalizedTargetSectionId,
-    };
-
-    const nextTargetQuestions = [...targetQuestions];
-    nextTargetQuestions.splice(insertIndex >= 0 ? insertIndex : nextTargetQuestions.length, 0, movedToTarget);
-
-    const reassignedSource = sourceSectionId === normalizedTargetSectionId
-      ? []
-      : sourceQuestions.map((question, index) => ({
-        ...question,
-        order_in_section: index,
-      }));
-
-    const reassignedTarget = nextTargetQuestions.map((question, index) => ({
-      ...question,
-      order_in_section: index,
-    }));
-
-    const updatedMap = new Map();
-    reassignedSource.forEach((question) => updatedMap.set(question.question_id, question));
-    reassignedTarget.forEach((question) => updatedMap.set(question.question_id, question));
-
-    const nextQuestions = questions.map((question) => updatedMap.get(question.question_id) || question);
-    const changedQuestions = nextQuestions.filter((question) => {
-      const prev = questions.find((item) => item.question_id === question.question_id);
-      if (!prev) return false;
-      return (prev.section_id ?? null) !== (question.section_id ?? null)
-        || (prev.order_in_section ?? 0) !== (question.order_in_section ?? 0);
-    });
-
-    setQuestions(nextQuestions);
-    const baseSections = sections
-      .filter((section) => section.id !== null)
-      .map((section) => ({ id: section.id, name: section.name, order: section.order }));
-    setSections(rebuildSectionsWithQuestions(baseSections, nextQuestions));
-    setIsReordering(true);
-
-    try {
-      for (const question of changedQuestions) {
-        await api.questions.update(question.question_id, {
-          section_id: question.section_id,
-          order_in_section: question.order_in_section,
-        });
-      }
-      showToast({ type: 'success', title: 'Reordered', message: 'Question order updated.' });
-    } catch (err) {
-      showToast({ type: 'error', title: 'Reorder failed', message: err.message || 'Try again' });
-      await load();
-    } finally {
-      setIsReordering(false);
-      handleDragEnd();
-    }
-  };
-
-  const isCreateSectionDisabled = isLocked || isCreatingSectionBusy || !newSectionName.trim();
 
   return (
     <div className="flex-1 p-6 lg:p-12 bg-brand-bg min-h-screen">
@@ -671,51 +282,19 @@ const QuestionsPage = () => {
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-lg font-semibold">{sec.name}</h3>
                   <Button
-                    onClick={() => openEditor({ section_id: sec.id, question_text: '', type: 'LIKERT', is_required: true, is_active: true, order_in_section: getNextQuestionOrder(sec.id) })}
+                    onClick={() => openEditor({ section_id: sec.id, question_text: '', type: 'LIKERT', is_required: true, is_active: true, order_in_section: sec.questions.length })}
                     disabled={isLocked}
                     className="inline-flex items-center gap-2 border border-gray-200 bg-white px-4 py-2 h-auto rounded-xl text-xs font-semibold text-brand-black hover:bg-gray-50 transition-all cursor-pointer"
                   >
                     Add in section
                   </Button>
                 </div>
-                <ul
-                  className={`space-y-2 rounded-xl p-2 transition-colors ${dropTargetSectionId === (sec.id ?? null) ? 'bg-brand-bg' : ''}`}
-                  onDragOver={(event) => {
-                    event.preventDefault();
-                    if (!isLocked && !isReordering) {
-                      setDropTargetSectionId(sec.id ?? null);
-                    }
-                  }}
-                  onDragLeave={() => {
-                    setDropTargetSectionId(null);
-                  }}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    handleDropOnSection(sec.id ?? null);
-                  }}
-                >
+                <ul className="space-y-2">
                   {sec.questions.map((q) => (
                     <li
                       key={q.question_id}
-                      draggable={!isLocked && !isReordering}
-                      onDragStart={() => handleDragStart(q.question_id)}
-                      onDragEnd={handleDragEnd}
-                      onDragOver={(event) => {
-                        event.preventDefault();
-                        if (!isLocked && !isReordering) {
-                          setDropTargetSectionId(sec.id ?? null);
-                        }
-                      }}
-                      onDrop={(event) => {
-                        event.preventDefault();
-                        handleDropOnQuestion(q.question_id, sec.id ?? null);
-                      }}
-                      className={`group flex items-center justify-between p-3 rounded-md border border-gray-100 hover:bg-gray-50 cursor-pointer ${draggedQuestionId === q.question_id ? 'opacity-50' : ''}`}
-                      onClick={() => {
-                        if (!draggedQuestionId) {
-                          openEditor(q);
-                        }
-                      }}
+                      className="group flex items-center justify-between p-3 rounded-md border border-gray-100 hover:bg-gray-50 cursor-pointer"
+                      onClick={() => openEditor(q)}
                     >
                       <div>
                         <div className="font-medium">{q.question_text}</div>
@@ -732,11 +311,6 @@ const QuestionsPage = () => {
                       </div>
                     </li>
                   ))}
-                  {sec.questions.length === 0 && (
-                    <li className="rounded-md border border-dashed border-gray-200 px-3 py-4 text-sm text-brand-grey">
-                      Drop a question here
-                    </li>
-                  )}
                 </ul>
               </div>
             ))}
@@ -752,21 +326,7 @@ const QuestionsPage = () => {
               <button onClick={() => { setIsEditingModalOpen(false); setEditing(null); }} className="text-brand-grey">Close</button>
             </div>
 
-            <QuestionEditor
-              question={editing}
-              sections={sections}
-              onChange={setEditing}
-              getNextQuestionOrder={getNextQuestionOrder}
-              isCreatingSection={isCreatingSection}
-              newSectionName={newSectionName}
-              newSectionOrder={newSectionOrder}
-              onNewSectionNameChange={setNewSectionName}
-              onNewSectionOrderChange={setNewSectionOrder}
-              onStartCreateSection={startCreateSection}
-              onCancelCreateSection={cancelCreateSection}
-              onCreateSection={handleCreateSection}
-              isCreateSectionDisabled={isCreateSectionDisabled}
-            />
+            <QuestionEditor question={editing} sections={sections} onChange={setEditing} />
 
             <div className="mt-6 flex justify-end gap-3">
               <button

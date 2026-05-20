@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Question from './client/Question';
 import DynamicButton from './client/DynamicButton';
 import NominationSubmitted from './client/NominationSubmitted';
+import ModalNameConfirm from './client/ModalNameConfirm';
 import { apiProvider as api } from '../lib/apiProvider';
 import { useToast } from '../lib/ToastContext';
 import { USE_MOCK } from '../lib/config';
@@ -13,6 +14,9 @@ const ClientForms = ({ evaluationId, evaluateeName }) => {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
+
+    const [showNameModal, setShowNameModal] = useState(false);
+    const [evaluatorName, setEvaluatorName] = useState('');
 
     const effectiveEvaluationId = evaluationId || (USE_MOCK ? 999 : null);
     const effectiveEvaluateeName = evaluateeName || (USE_MOCK ? 'Juan Dela Cruz' : '');  
@@ -66,6 +70,14 @@ const ClientForms = ({ evaluationId, evaluateeName }) => {
         }
     }, [evaluationId, showToast]);
 
+    useEffect(() => {
+        const user = api.auth.getUser();
+        if (user?.full_name) {
+            setEvaluatorName(user.full_name);
+        }
+    }, []);
+
+
     const handleAnswerChange = (questionId, value) => {
         setAnswers(prev => ({
             ...prev,
@@ -73,8 +85,7 @@ const ClientForms = ({ evaluationId, evaluateeName }) => {
         }));
     };
 
-    const handleSubmit = async () => {
-        // Validate that all required questions are answered
+    const handleSubmit = () => {
         let allValid = true;
         
         sections.forEach(section => {
@@ -95,6 +106,10 @@ const ClientForms = ({ evaluationId, evaluateeName }) => {
             return;
         }
 
+        setShowNameModal(true);
+    };
+
+    const performSubmission = async () => {
         setSubmitting(true);
         try {
             const formattedAnswers = Object.entries(answers).map(([questionId, value]) => {
@@ -122,6 +137,15 @@ const ClientForms = ({ evaluationId, evaluateeName }) => {
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const handleNameConfirm = () => {
+        setShowNameModal(false);
+        performSubmission();
+    };
+
+    const handleNameCancel = () => {
+        setShowNameModal(false);
     };
 
     if (submitted) {
@@ -194,6 +218,13 @@ const ClientForms = ({ evaluationId, evaluateeName }) => {
                     />
                 </div>
             </div>
+
+            <ModalNameConfirm
+                isOpen={showNameModal}
+                onClose={handleNameCancel}
+                onConfirm={handleNameConfirm}
+                expectedName={evaluatorName}
+            />
         </div>   
     );
 };

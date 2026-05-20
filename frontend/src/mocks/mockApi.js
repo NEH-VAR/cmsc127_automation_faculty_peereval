@@ -15,6 +15,10 @@ export const mockApi = {
 
     auth: {
         setToken: () => {},
+        setUser: () => {},
+        getUser: () => {
+            return getData().userDetails;
+        },
     },
 
     users: {
@@ -37,6 +41,16 @@ export const mockApi = {
     questions: {
         findActive: async () => {
             return getData().questions;
+        },
+    },
+    evaluations: {
+        getById: async () => {
+            return getData().evaluation;
+        },
+    },
+    answers: {
+        submit: async () => {
+            return { success: true };
         },
     },
 };

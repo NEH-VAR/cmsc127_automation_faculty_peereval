@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 .skills
 .env
+doc_changes.md
+
+local/

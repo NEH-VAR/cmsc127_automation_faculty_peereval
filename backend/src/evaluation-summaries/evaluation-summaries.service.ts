@@ -211,6 +211,8 @@ export class EvaluationSummariesService {
         dean_signed_by: summary.deanSign?.full_name ?? null,
       },
       document_url: summary.document_url ? summary.document_url.toString('base64') : null,
+      pdf_status: summary.pdf_status ?? 'PENDING',
+      pdf_error: summary.pdf_error ?? null,
     };
   }
 
@@ -221,6 +223,19 @@ export class EvaluationSummariesService {
     }
 
     summary.document_url = pdfData;
+    summary.pdf_status = 'READY';
+    summary.pdf_error = null;
+    await this.summaryRepo.save(summary);
+  }
+
+  async updatePdfStatus(summaryId: number, status: 'PENDING' | 'GENERATING' | 'READY' | 'FAILED', errorMessage?: string | null) {
+    const summary = await this.summaryRepo.findOne({ where: { summary_id: summaryId } });
+    if (!summary) {
+      throw new NotFoundException(`Evaluation summary #${summaryId} not found`);
+    }
+
+    summary.pdf_status = status;
+    summary.pdf_error = errorMessage ?? null;
     await this.summaryRepo.save(summary);
   }
 
@@ -266,6 +281,10 @@ export class EvaluationSummariesService {
     }
 
     this.ensureCanViewSummary(summary, requesterId, role);
+
+    if (summary.pdf_status === 'FAILED') {
+      throw new BadRequestException(`PDF generation failed${summary.pdf_error ? `: ${summary.pdf_error}` : '.'}`);
+    }
 
     if (!summary.document_url || summary.document_url.length === 0) {
       throw new BadRequestException('PDF is not available yet. It is still being generated asynchronously.');

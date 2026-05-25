@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CreatePdfServiceDto } from './dto/create-pdf-service.dto';
 import { UpdatePdfServiceDto } from './dto/update-pdf-service.dto';
 import { EvaluationSummariesService } from '../evaluation-summaries/evaluation-summaries.service';
@@ -56,13 +57,18 @@ type PdfStructure = {
 
 @Injectable()
 export class PdfServicesService {
-  constructor(private readonly summariesService: EvaluationSummariesService) {}
+  constructor(
+    private readonly summariesService: EvaluationSummariesService,
+    private readonly configService: ConfigService,
+  ) {}
 
   async generateEvaluationSummaryPdf(
     summaryId: number,
     requesterId: number,
     role: UserRole,
   ): Promise<Buffer> {
+    await this.summariesService.updatePdfStatus(summaryId, 'GENERATING', null);
+
     const structure = await this.summariesService.getPdfStructure(summaryId, requesterId, role);
 
     const template = `
@@ -171,15 +177,30 @@ export class PdfServicesService {
     const compiled = handlebars.compile(template);
     const html = compiled({ ...structure, showOpenEndedNotice: role === UserRole.FACULTY });
 
-    const browser = await puppeteer.launch({ args: ['--no-sandbox'] });
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
-    const pdfData = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '20mm', bottom: '20mm' } });
-    await browser.close();
+    const executablePath = this.configService.get<string>('PUPPETEER_EXECUTABLE_PATH') || undefined;
 
-    const pdfBuffer = Buffer.from(pdfData);
-    await this.summariesService.savePdfDocument(summaryId, pdfBuffer);
-    return pdfBuffer;
+    try {
+      const browser = await puppeteer.launch({
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        executablePath,
+      });
+      const page = await browser.newPage();
+      await page.setContent(html, { waitUntil: 'networkidle0' });
+      const pdfData = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        margin: { top: '20mm', bottom: '20mm' },
+      });
+      await browser.close();
+
+      const pdfBuffer = Buffer.from(pdfData);
+      await this.summariesService.savePdfDocument(summaryId, pdfBuffer);
+      return pdfBuffer;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown PDF generation error';
+      await this.summariesService.updatePdfStatus(summaryId, 'FAILED', message);
+      throw error;
+    }
   }
 
   create(createPdfServiceDto: CreatePdfServiceDto) {

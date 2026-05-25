@@ -52,4 +52,11 @@ export class PdfServicesController {
     });
     res.send(pdfBuffer);
   }
+
+  @Roles(UserRole.DEP_CHAIR, UserRole.DEAN, UserRole.ADMIN)
+  @Post('evaluation-summary/:id/pdf/retry')
+  async retryEvaluationSummaryPdf(@Param('id', ParseIntPipe) id: number, @Request() req) {
+    await this.pdfServicesService.generateEvaluationSummaryPdf(id, req.user.user_id, req.user.role);
+    return { message: 'PDF generation completed.' };
+  }
 }

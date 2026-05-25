@@ -344,6 +344,8 @@ export class AnswersService {
       is_satisfactory: summaryData.is_satisfactory,
       section_statistics: summaryData.section_statistics,
       open_ended_comments: summaryData.open_ended_comments,
+      pdf_status: 'PENDING',
+      pdf_error: null,
     });
 
     return savedSummary.summary_id;

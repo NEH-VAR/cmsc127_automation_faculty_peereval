@@ -469,6 +469,21 @@ export const api = {
 
       return response.blob();
     },
+    retryPdf: async (summaryId) => {
+      const response = await fetch(`${API_BASE_URL}/api/pdf-services/evaluation-summary/${summaryId}/pdf/retry`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to retry PDF generation');
+      }
+
+      return response.json();
+    },
   },
 };
 

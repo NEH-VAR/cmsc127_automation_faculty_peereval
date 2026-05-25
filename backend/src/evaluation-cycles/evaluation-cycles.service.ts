@@ -105,6 +105,7 @@ export class EvaluationCyclesService {
         where: { evaluatee_id: user.user_id, cycle_id: cycleId },
       });
       const hasPdf = !!summary?.document_url;
+      const pdfStatus = summary?.pdf_status ?? (hasPdf ? 'READY' : 'PENDING');
 
       return {
         user_id: user.user_id,
@@ -125,6 +126,8 @@ export class EvaluationCyclesService {
         evaluations_completed_count: completedEvaluationsCount,
         summary_id: summary?.summary_id || null,
         has_pdf: hasPdf,
+        pdf_status: pdfStatus,
+        pdf_error: summary?.pdf_error ?? null,
       };
     }));
 

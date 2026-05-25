@@ -62,4 +62,10 @@ export class EvaluationSummary {
 
   @Column({ type: 'bytea', nullable: true, transformer: EncryptedBufferTransformer })
   document_url: Buffer | null;
+
+  @Column({ type: 'varchar', length: 16, default: 'PENDING' })
+  pdf_status: 'PENDING' | 'GENERATING' | 'READY' | 'FAILED';
+
+  @Column({ type: 'text', nullable: true })
+  pdf_error: string | null;
 } 

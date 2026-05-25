@@ -20,6 +20,7 @@ const ProgressDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [cycleInfo, setCycleInfo] = useState(null);
   const [sendingReminderId, setSendingReminderId] = useState(null);
+  const [retryingPdfId, setRetryingPdfId] = useState(null);
   const [selectedNominations, setSelectedNominations] = useState(null);
   const [rowErrors, setRowErrors] = useState({});
   const { showToast } = useToast();
@@ -62,6 +63,8 @@ const ProgressDashboard = () => {
           approved_nominations: m.approved_nominations || [],
           summary_id: m.summary_id || null,
           has_pdf: m.has_pdf || false,
+          pdf_status: m.pdf_status || 'PENDING',
+          pdf_error: m.pdf_error || null,
         }));
 
         setProgressData(rows);
@@ -189,7 +192,9 @@ const ProgressDashboard = () => {
                         <div className="flex items-center justify-end gap-3 mt-3">
                           <button
                             className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${!faculty.has_pdf
-                                ? 'bg-blue-50 text-blue-600 opacity-60 cursor-not-allowed'
+                                ? faculty.pdf_status === 'FAILED'
+                                  ? 'bg-red-50 text-red-600 opacity-80 cursor-not-allowed'
+                                  : 'bg-blue-50 text-blue-600 opacity-60 cursor-not-allowed'
                                 : 'bg-green-50 text-brand-green hover:bg-green-100'
                               }`}
                             disabled={!faculty.has_pdf}
@@ -209,8 +214,48 @@ const ProgressDashboard = () => {
                               }
                             }}
                           >
-                            {!faculty.has_pdf ? 'Generating PDF...' : 'View PDF'}
+                            {faculty.has_pdf ? 'View PDF' : faculty.pdf_status === 'FAILED' ? 'PDF failed' : 'Generating PDF...'}
                           </button>
+                          {faculty.pdf_status === 'FAILED' && (
+                            <button
+                              className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl text-xs font-semibold transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                              disabled={retryingPdfId === faculty.id}
+                              onClick={async () => {
+                                setRowErrors((prev) => ({ ...prev, [faculty.id]: null }));
+                                setRetryingPdfId(faculty.id);
+                                try {
+                                  await api.evaluationSummaries.retryPdf(faculty.summary_id);
+                                  showToast({ type: 'success', title: 'Retry started', message: 'PDF generation was retried.' });
+                                  const progress = await api.evaluationCycles.getProgress(cycleInfo.cycle_id);
+                                  const rows = (progress.members || []).map((m) => ({
+                                    id: m.user_id,
+                                    name: m.full_name,
+                                    title: '',
+                                    completed: m.evaluations_completed_count,
+                                    total: 3,
+                                    nominations_submitted: m.nominations_submitted,
+                                    nominations_complete: m.nominations_complete,
+                                    missing_nominations: m.missing_nominations,
+                                    nominations: m.nominations || [],
+                                    approved_nominations: m.approved_nominations || [],
+                                    summary_id: m.summary_id || null,
+                                    has_pdf: m.has_pdf || false,
+                                    pdf_status: m.pdf_status || 'PENDING',
+                                    pdf_error: m.pdf_error || null,
+                                  }));
+                                  setProgressData(rows);
+                                } catch (err) {
+                                  const message = err.message || 'Could not retry PDF generation';
+                                  setRowErrors((prev) => ({ ...prev, [faculty.id]: message }));
+                                  showToast({ type: 'error', title: 'Failed', message });
+                                } finally {
+                                  setRetryingPdfId((current) => (current === faculty.id ? null : current));
+                                }
+                              }}
+                            >
+                              {retryingPdfId === faculty.id ? 'Retrying...' : 'Retry PDF'}
+                            </button>
+                          )}
                         </div>
                       ) : (
                         <div className="flex items-center justify-end gap-3 mt-3">
@@ -238,6 +283,8 @@ const ProgressDashboard = () => {
                                   approved_nominations: m.approved_nominations || [],
                                   summary_id: m.summary_id || null,
                                   has_pdf: m.has_pdf || false,
+                                  pdf_status: m.pdf_status || 'PENDING',
+                                  pdf_error: m.pdf_error || null,
                                 }));
                                 setProgressData(rows);
                               } catch (err) {
@@ -262,6 +309,11 @@ const ProgressDashboard = () => {
                       {rowErrors[faculty.id] && (
                         <p className="mt-2 text-xs font-medium text-red-600 text-right max-w-[18rem] ml-auto">
                           {rowErrors[faculty.id]}
+                        </p>
+                      )}
+                      {faculty.pdf_status === 'FAILED' && faculty.pdf_error && (
+                        <p className="mt-2 text-xs font-medium text-red-600 text-right max-w-[18rem] ml-auto">
+                          {faculty.pdf_error}
                         </p>
                       )}
                       <div className="mt-2">

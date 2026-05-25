@@ -55,6 +55,24 @@ export const mockData = (key) => {
             ],
         },
         'client-forms': {
+            auth: {
+                purpose: 'EVALUATION',
+                access_token: 'mock-evaluation-token',
+                user_id: 1,
+                reference_id: 999,
+            },
+            userDetails: {
+                id: 1,
+                full_name: 'Juan Dela Cruz',
+            },
+            evaluation: {
+                id: 999,
+                nomination: {
+                    evaluatee: {
+                        full_name: 'Prof. Maria Santos',
+                    },
+                },
+            },
             questions: [
                 {
                     question_id: 1,

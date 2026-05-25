@@ -19,7 +19,7 @@ async function bootstrap() {
     origin: corsOrigins,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     allowedHeaders: 'Content-Type, Accept, Authorization',
-    credentials: true,
+    credentials: false,
   });
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }))

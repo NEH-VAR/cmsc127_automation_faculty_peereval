@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ClientForms from './ClientForms';
-import { api } from '../lib/api';
+import { apiProvider as api } from '../lib/apiProvider';
+import { USE_MOCK } from '../lib/config';
 
 const EvaluateRoute = () => {
     const [searchParams] = useSearchParams();
@@ -9,11 +10,11 @@ const EvaluateRoute = () => {
     const [error, setError] = useState('');
     const [evaluationData, setEvaluationData] = useState(null);
 
-    const token = searchParams.get('token');
+    const token = searchParams.get('token') || (USE_MOCK ? 'mock-token' : null);
 
     useEffect(() => {
         const validateAndLoad = async () => {
-            if (!token) {
+            if (!token && !USE_MOCK) {
                 setError('Missing evaluation token.');
                 setStatus('error');
                 return;

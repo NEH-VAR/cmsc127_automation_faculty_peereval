@@ -18,17 +18,13 @@ const AdminLogin = ({ onLoginSuccess }) => {
   const handleEmailChange = (val) => {
     setEmail(val);
     setEmailError('');
-    if (passwordError === 'Please enter a valid email address.') {
-      setPasswordError('');
-    }
+    setPasswordError('');
   };
 
   const handlePasswordChange = (val) => {
     setPassword(val);
     setPasswordError('');
-    if (emailError === 'Please enter a valid email address.') {
-      setEmailError('');
-    }
+    setEmailError('');
   };
 
   const handleSubmit = async (e) => {
@@ -42,7 +38,7 @@ const AdminLogin = ({ onLoginSuccess }) => {
       hasError = true;
     }
     if (!password) {
-      setPasswordError('Please enter a valid email address.');
+      setPasswordError('Password is required.');
       hasError = true;
     }
 
@@ -88,8 +84,8 @@ const AdminLogin = ({ onLoginSuccess }) => {
       showToast('Login successful!', 'success');
       onLoginSuccess();
     } catch (error) {
-      setEmailError('Please enter a valid email address.');
-      setPasswordError('Please enter a valid email address.');
+      setEmailError('Login failed. Please try again.');
+      setPasswordError('Login failed. Please try again.');
       showToast(error.message || 'Login failed', 'error');
       console.error('Login error:', error);
 
